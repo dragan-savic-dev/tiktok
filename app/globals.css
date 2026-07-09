@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --background: #050505;
+  --foreground: #f4f4f5;
+}
+
+@theme {
+  /* Colori brand TikTok */
+  --color-tt-cyan: #25f4ee;
+  --color-tt-pink: #fe2c55;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Anello di progresso del ciclo di aggiornamento (5s): il valore 50.265 è la
+   circonferenza del cerchio r=8 usato in live-indicator.tsx */
+@keyframes ring-progress {
+  from {
+    stroke-dashoffset: 50.265;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-ring {
+  stroke-dashoffset: 50.265;
+  animation: ring-progress 5s linear forwards;
+}
