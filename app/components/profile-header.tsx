@@ -5,7 +5,7 @@ export default function ProfileHeader({ user }: { user: TikTokUser }) {
   const avatar = user.avatar_large_url ?? user.avatar_url;
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-2.5">
       <div className="relative">
         <div
           className="absolute -inset-1.5 rounded-full bg-gradient-to-tr from-tt-cyan via-tt-cyan/40 to-tt-pink opacity-80 blur-lg"
@@ -16,15 +16,15 @@ export default function ProfileHeader({ user }: { user: TikTokUser }) {
           <img
             src={avatar}
             alt={user.display_name ?? "Avatar"}
-            className="relative h-28 w-28 rounded-full border-2 border-black object-cover"
+            className="relative h-20 w-20 rounded-full border-2 border-black object-cover"
           />
         ) : (
-          <div className="relative h-28 w-28 rounded-full border-2 border-black bg-zinc-800" />
+          <div className="relative h-20 w-20 rounded-full border-2 border-black bg-zinc-800" />
         )}
       </div>
-      <div className="flex flex-col items-center gap-1">
+      <div className="flex flex-col items-center gap-0.5">
         <div className="flex items-center gap-1.5">
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-xl font-bold text-white">
             {user.display_name ?? "Profilo TikTok"}
           </h1>
           {user.is_verified && <VerifiedIcon className="h-5 w-5 text-tt-cyan" />}

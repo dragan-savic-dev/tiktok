@@ -6,11 +6,10 @@ import {
   CommentIcon,
   EyeIcon,
   HeartIcon,
-  PlayIcon,
   ShareIcon,
   TikTokIcon,
-  UserPlusIcon,
 } from "@/app/components/icons";
+import DeltaBadge from "@/app/components/delta-badge";
 import LiveIndicator from "@/app/components/live-indicator";
 import OdometerNumber from "@/app/components/odometer-number";
 import ProfileHeader from "@/app/components/profile-header";
@@ -71,10 +70,11 @@ export default function DashboardClient() {
   };
 
   const followerDelta = delta((s) => s.user.follower_count);
+  const followingDelta = delta((s) => s.user.following_count);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
+    <div className="flex h-dvh flex-col overflow-hidden">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2 font-semibold text-white">
           <TikTokIcon className="h-5 w-5" />
           <span>TikTok Live Stats</span>
@@ -90,7 +90,7 @@ export default function DashboardClient() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center gap-10 px-6 pb-16 pt-4">
+      <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col items-center justify-center gap-6 px-6 pb-6">
         {error && (
           <p className="w-full rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-300">
             Errore nell’aggiornamento: {error} — nuovo tentativo tra 5 secondi.
@@ -106,51 +106,34 @@ export default function DashboardClient() {
           <>
             <ProfileHeader user={stats.user} />
 
-            <section className="flex flex-col items-center gap-3">
-              <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
-                Follower
-              </span>
-              <OdometerNumber
-                value={stats.user.follower_count ?? 0}
-                className="text-6xl font-bold text-white sm:text-7xl md:text-8xl [text-shadow:0_0_40px_rgba(37,244,238,0.35),0_0_80px_rgba(254,44,85,0.25)]"
-              />
-              {followerDelta !== undefined && followerDelta !== 0 && (
-                <span
-                  className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                    followerDelta > 0
-                      ? "bg-emerald-400/10 text-emerald-400"
-                      : "bg-tt-pink/10 text-tt-pink"
-                  }`}
-                >
-                  {followerDelta > 0 ? "+" : ""}
-                  {followerDelta.toLocaleString("it-IT")}
+            <section className="flex flex-col items-center gap-5 sm:flex-row sm:items-end sm:justify-center sm:gap-14">
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+                  Follower
                 </span>
-              )}
+                <div className="flex items-center gap-3">
+                  <OdometerNumber
+                    value={stats.user.follower_count ?? 0}
+                    className="text-5xl font-bold text-white sm:text-6xl md:text-7xl [text-shadow:0_0_40px_rgba(37,244,238,0.35),0_0_80px_rgba(254,44,85,0.25)]"
+                  />
+                  <DeltaBadge delta={followerDelta} className="text-sm" />
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+                  Seguiti
+                </span>
+                <div className="flex items-center gap-2">
+                  <OdometerNumber
+                    value={stats.user.following_count ?? 0}
+                    className="text-3xl font-bold text-white sm:text-4xl"
+                  />
+                  <DeltaBadge delta={followingDelta} className="text-sm" />
+                </div>
+              </div>
             </section>
 
-            <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
-              <StatCard
-                label="Seguiti"
-                value={stats.user.following_count ?? 0}
-                delta={delta((s) => s.user.following_count)}
-                icon={<UserPlusIcon className="h-4 w-4" />}
-              />
-              <StatCard
-                label="Mi piace (profilo)"
-                value={stats.user.likes_count ?? 0}
-                delta={delta((s) => s.user.likes_count)}
-                icon={<HeartIcon className="h-4 w-4" />}
-                accent="pink"
-              />
-              <StatCard
-                label="Video pubblicati"
-                value={stats.user.video_count ?? 0}
-                delta={delta((s) => s.user.video_count)}
-                icon={<PlayIcon className="h-4 w-4" />}
-              />
-            </section>
-
-            <section className="flex w-full flex-col gap-4">
+            <section className="flex w-full flex-col gap-3">
               <h2 className="text-center text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
                 Totali su tutti i video
               </h2>
