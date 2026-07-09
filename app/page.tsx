@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { hasSession } from "@/lib/session";
 import { TikTokIcon } from "./components/icons";
+import InstallButton from "./components/install-button";
 
 const ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Hai negato l’accesso su TikTok.",
@@ -49,6 +50,8 @@ export default async function Home({
         <TikTokIcon className="h-5 w-5" />
         Continua con TikTok
       </a>
+
+      <InstallButton />
 
       <p className="max-w-sm text-xs text-zinc-600">
         Nessun dato viene salvato: i token di accesso vivono in cookie httpOnly

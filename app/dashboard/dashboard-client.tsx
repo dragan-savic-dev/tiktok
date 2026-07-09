@@ -6,7 +6,6 @@ import {
   BookmarkIcon,
   CommentIcon,
   EyeIcon,
-  HeartIcon,
   ShareIcon,
   TikTokIcon,
 } from "@/app/components/icons";
@@ -72,22 +71,25 @@ export default function DashboardClient() {
 
   const followerDelta = delta((s) => s.user.follower_count);
   const followingDelta = delta((s) => s.user.following_count);
+  const profileLikesDelta = delta((s) => s.user.likes_count);
 
   return (
     <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
-      <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-2 font-semibold text-white">
-          <TikTokIcon className="h-5 w-5" />
-          <span>TikTok Live Stats</span>
-        </div>
-        <div className="flex items-center gap-5">
-          <LiveIndicator tick={tick} error={!!error} />
-          <a
-            href="/api/auth/logout"
-            className="text-sm text-zinc-400 transition-colors hover:text-white"
-          >
-            Esci
-          </a>
+      <header className="sticky top-0 z-20 border-b border-white/5 bg-[#050505]/80 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2 font-semibold text-white">
+            <TikTokIcon className="h-5 w-5" />
+            <span>TikTok Live Stats</span>
+          </div>
+          <div className="flex items-center gap-5">
+            <LiveIndicator tick={tick} error={!!error} />
+            <a
+              href="/api/auth/logout"
+              className="text-sm text-zinc-400 transition-colors hover:text-white"
+            >
+              Esci
+            </a>
+          </div>
         </div>
       </header>
 
@@ -139,25 +141,33 @@ export default function DashboardClient() {
                   />
                 </div>
               </div>
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+                  Mi piace
+                </span>
+                <div className="relative">
+                  <OdometerNumber
+                    value={stats.user.likes_count ?? 0}
+                    className="text-3xl font-bold text-white sm:text-4xl"
+                  />
+                  <DeltaBadge
+                    delta={profileLikesDelta}
+                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-sm"
+                  />
+                </div>
+              </div>
             </section>
 
             <section className="flex w-full flex-col gap-3">
               <h2 className="text-center text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
                 Totali su tutti i video
               </h2>
-              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                   label="Visualizzazioni"
                   value={stats.totals.views}
                   delta={delta((s) => s.totals.views)}
                   icon={<EyeIcon className="h-4 w-4" />}
-                />
-                <StatCard
-                  label="Mi piace"
-                  value={stats.totals.likes}
-                  delta={delta((s) => s.totals.likes)}
-                  icon={<HeartIcon className="h-4 w-4" />}
-                  accent="pink"
                 />
                 <StatCard
                   label="Commenti"

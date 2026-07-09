@@ -43,6 +43,16 @@ Apri l'URL **https del tunnel** (non localhost, altrimenti i cookie `secure` non
 - `app/api/stats` → chiamato dal client ogni 5s; rinnova l'access token se sta per scadere (margine 2 min, refresh token eventualmente ruotato viene ri-salvato), poi legge da una cache in memoria: user info (TTL 4,5s) e aggregato video (`/v2/video/list/` paginato 20 per pagina; TTL adattivo 4,5–30s in base al numero di video, per restare sotto il rate limit TikTok di 600 richieste/min per endpoint).
 - `app/dashboard` → UI live: numeri con cifre a rullo (odometro), badge delta ±, indicatore LIVE con anello di progresso dei 5 secondi.
 
+## PWA (installabile)
+
+L'app è una PWA: dal browser (HTTPS) puoi installarla in home/desktop. Su Chrome/Edge/Android compare il prompt d'installazione (o il pulsante "Installa l'app" in home); su iOS usa Condividi → "Aggiungi a Home".
+
+- Manifest generato da `app/manifest.ts`, icone in `public/` (`icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-icon-180.png`).
+- Service worker `public/sw.js`: **non intercetta mai `/api/*`**, quindi i contatori live continuano ad aggiornarsi ogni 5 secondi anche da app installata. Fa cache degli asset statici (stale-while-revalidate) e ha un fallback offline (`public/offline.html`).
+- Aggiornamenti automatici: al deploy di una nuova versione il SW si attiva subito (`skipWaiting` + `clients.claim`) e la pagina si ricarica una volta da sola. L'header `Cache-Control: no-store` su `/sw.js` (in `next.config.ts`) evita che il SW resti bloccato in cache.
+
+Per rigenerare le icone: `node scripts/gen-icons.mjs public` (se conservi lo script) — sono comunque già committate.
+
 ## Limiti (API ufficiale)
 
 - Il conteggio **"salvati"** non è esposto dalla Display API (esiste solo nella Research API per ricercatori accreditati). Viene quindi ricavato via **scraping** del JSON incorporato nelle pagine pubbliche dei video (`collectCount`, vedi `lib/tiktok-scrape.ts`), aggiornato circa ogni minuto. È fragile per natura: se TikTok cambia il markup o blocca l'IP del server (frequente sugli IP dei datacenter come quelli di Vercel), la card mostra l'ultimo valore noto o "N/D" — il resto della dashboard non ne risente.
