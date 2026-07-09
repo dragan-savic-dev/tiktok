@@ -75,7 +75,7 @@ export default function DashboardClient() {
 
   return (
     <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
+      <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2 font-semibold text-white">
           <TikTokIcon className="h-5 w-5" />
           <span>TikTok Live Stats</span>
@@ -91,7 +91,7 @@ export default function DashboardClient() {
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col items-center justify-center gap-6 px-6 pb-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col items-center justify-center gap-6 px-6 pb-6">
         {error && (
           <p className="w-full rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-300">
             Errore nell’aggiornamento: {error} — nuovo tentativo tra 5 secondi.
