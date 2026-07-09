@@ -16,6 +16,7 @@ export interface TikTokUser {
 
 export interface VideoStats {
   id: string;
+  share_url?: string;
   view_count: number;
   like_count: number;
   comment_count: number;
@@ -33,5 +34,7 @@ export interface VideoTotals {
 export interface StatsResponse {
   user: TikTokUser;
   totals: VideoTotals;
+  /** Totale "salvati" via scraping delle pagine pubbliche; null se non disponibile. */
+  saved: number | null;
   fetchedAt: number;
 }

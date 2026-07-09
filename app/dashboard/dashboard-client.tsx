@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StatsResponse } from "@/lib/types";
 import {
+  BookmarkIcon,
   CommentIcon,
   EyeIcon,
   HeartIcon,
@@ -73,7 +74,7 @@ export default function DashboardClient() {
   const followingDelta = delta((s) => s.user.following_count);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="flex min-h-dvh flex-col md:h-dvh md:overflow-hidden">
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2 font-semibold text-white">
           <TikTokIcon className="h-5 w-5" />
@@ -106,29 +107,36 @@ export default function DashboardClient() {
           <>
             <ProfileHeader user={stats.user} />
 
-            <section className="flex flex-col items-center gap-5 sm:flex-row sm:items-end sm:justify-center sm:gap-14">
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
-                  Follower
-                </span>
-                <div className="flex items-center gap-3">
-                  <OdometerNumber
-                    value={stats.user.follower_count ?? 0}
-                    className="text-5xl font-bold text-white sm:text-6xl md:text-7xl [text-shadow:0_0_40px_rgba(37,244,238,0.35),0_0_80px_rgba(254,44,85,0.25)]"
-                  />
-                  <DeltaBadge delta={followerDelta} className="text-sm" />
-                </div>
-              </div>
+            <section className="flex flex-row items-end justify-center gap-8 sm:gap-14">
               <div className="flex flex-col items-center gap-2">
                 <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
                   Seguiti
                 </span>
-                <div className="flex items-center gap-2">
+                {/* Badge in absolute: appare di fianco senza spostare il numero centrato */}
+                <div className="relative">
                   <OdometerNumber
                     value={stats.user.following_count ?? 0}
                     className="text-3xl font-bold text-white sm:text-4xl"
                   />
-                  <DeltaBadge delta={followingDelta} className="text-sm" />
+                  <DeltaBadge
+                    delta={followingDelta}
+                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+                  Follower
+                </span>
+                <div className="relative">
+                  <OdometerNumber
+                    value={stats.user.follower_count ?? 0}
+                    className="text-3xl font-bold text-white sm:text-4xl"
+                  />
+                  <DeltaBadge
+                    delta={followerDelta}
+                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-sm"
+                  />
                 </div>
               </div>
             </section>
@@ -137,7 +145,7 @@ export default function DashboardClient() {
               <h2 className="text-center text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
                 Totali su tutti i video
               </h2>
-              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <StatCard
                   label="Visualizzazioni"
                   value={stats.totals.views}
@@ -164,11 +172,17 @@ export default function DashboardClient() {
                   icon={<ShareIcon className="h-4 w-4" />}
                   accent="pink"
                 />
+                <StatCard
+                  label="Salvati"
+                  value={stats.saved}
+                  delta={delta((s) => s.saved ?? undefined)}
+                  icon={<BookmarkIcon className="h-4 w-4" />}
+                />
               </div>
               <p className="text-center text-xs text-zinc-500">
                 Somma su {stats.totals.videosCounted.toLocaleString("it-IT")} video pubblici ·
-                aggiornamento ogni 5 secondi · il conteggio “salvati” non è esposto
-                dall’API ufficiale TikTok
+                aggiornamento ogni 5 secondi · i “salvati” sono letti dalle pagine
+                pubbliche dei video circa ogni minuto (N/D se TikTok li blocca)
               </p>
             </section>
           </>

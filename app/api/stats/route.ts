@@ -7,11 +7,16 @@ import {
   getAllVideoStats,
   getUserInfo,
 } from "@/lib/tiktok";
+import { getTotalSavedCount } from "@/lib/tiktok-scrape";
 import type { StatsResponse } from "@/lib/types";
 
 // TTL sotto i 5s del polling, così ogni ciclo del client trova dati freschi
 // ma più tab aperte condividono la stessa chiamata a TikTok.
 const USER_TTL_MS = 4500;
+
+// I "salvati" arrivano via scraping (una pagina per video): cadenza più
+// lenta per non farsi bloccare da TikTok.
+const SAVED_TTL_MS = 60_000;
 
 // L'aggregato costa ceil(video_count/20) richieste a /v2/video/list/: con
 // tanti video si allunga il TTL per restare lontani dal limite di 600 req/min.
@@ -33,13 +38,17 @@ export async function GET() {
     const user = await getOrFetch(`user:${openId}`, USER_TTL_MS, () =>
       getUserInfo(accessToken),
     );
-    const totals = await getOrFetch(
+    const videos = await getOrFetch(
       `videos:${openId}`,
       videoTtlMs(user.video_count ?? 0),
-      async () => aggregateStats(await getAllVideoStats(accessToken)),
+      () => getAllVideoStats(accessToken),
+    );
+    const totals = aggregateStats(videos);
+    const saved = await getOrFetch(`saved:${openId}`, SAVED_TTL_MS, () =>
+      getTotalSavedCount(openId, videos),
     );
 
-    const payload: StatsResponse = { user, totals, fetchedAt: Date.now() };
+    const payload: StatsResponse = { user, totals, saved, fetchedAt: Date.now() };
     return NextResponse.json(payload);
   } catch (err) {
     if (err instanceof TikTokApiError && err.isAuthError) {

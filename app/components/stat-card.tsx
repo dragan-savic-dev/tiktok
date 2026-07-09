@@ -10,7 +10,8 @@ export default function StatCard({
   accent = "cyan",
 }: {
   label: string;
-  value: number;
+  /** null = dato non disponibile (mostra N/D). */
+  value: number | null;
   delta?: number;
   icon: ReactNode;
   accent?: "cyan" | "pink";
@@ -24,7 +25,11 @@ export default function StatCard({
         <span className={accent === "pink" ? "text-tt-pink" : "text-tt-cyan"}>{icon}</span>
       </div>
       <div className="flex items-end gap-2">
-        <OdometerNumber value={value} className="text-2xl font-semibold text-white" />
+        {value === null ? (
+          <span className="text-2xl font-semibold leading-none text-zinc-500">N/D</span>
+        ) : (
+          <OdometerNumber value={value} className="text-2xl font-semibold text-white" />
+        )}
         <DeltaBadge delta={delta} className="mb-0.5 text-xs" />
       </div>
     </div>

@@ -81,6 +81,14 @@ export function UserPlusIcon(props: IconProps) {
   );
 }
 
+export function BookmarkIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z" />
+    </StrokeIcon>
+  );
+}
+
 export function PlayIcon(props: IconProps) {
   return (
     <StrokeIcon {...props}>
