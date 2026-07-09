@@ -6,6 +6,7 @@ import {
   BookmarkIcon,
   CommentIcon,
   EyeIcon,
+  HeartIcon,
   ShareIcon,
   TikTokIcon,
 } from "@/app/components/icons";
@@ -141,7 +142,8 @@ export default function DashboardClient() {
                   />
                 </div>
               </div>
-              <div className="flex flex-col items-center gap-2">
+              {/* Su mobile "Mi piace" scende tra i totali (sotto le views) */}
+              <div className="hidden flex-col items-center gap-2 sm:flex">
                 <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
                   Mi piace
                 </span>
@@ -168,6 +170,14 @@ export default function DashboardClient() {
                   value={stats.totals.views}
                   delta={delta((s) => s.totals.views)}
                   icon={<EyeIcon className="h-4 w-4" />}
+                />
+                <StatCard
+                  label="Mi piace"
+                  value={stats.user.likes_count ?? 0}
+                  delta={profileLikesDelta}
+                  icon={<HeartIcon className="h-4 w-4" />}
+                  accent="pink"
+                  className="sm:hidden"
                 />
                 <StatCard
                   label="Commenti"

@@ -24,6 +24,19 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/* Su mobile la pagina scrolla ma la scrollbar resta nascosta */
+@media (max-width: 767px) {
+  html,
+  body {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge legacy */
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+}
+
 /* Anello di progresso del ciclo di aggiornamento (5s): il valore 50.265 è la
    circonferenza del cerchio r=8 usato in live-indicator.tsx */
 @keyframes ring-progress {

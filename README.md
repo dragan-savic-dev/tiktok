@@ -48,10 +48,10 @@ Apri l'URL **https del tunnel** (non localhost, altrimenti i cookie `secure` non
 L'app è una PWA: dal browser (HTTPS) puoi installarla in home/desktop. Su Chrome/Edge/Android compare il prompt d'installazione (o il pulsante "Installa l'app" in home); su iOS usa Condividi → "Aggiungi a Home".
 
 - Manifest generato da `app/manifest.ts`, icone in `public/` (`icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-icon-180.png`).
-- Service worker `public/sw.js`: **non intercetta mai `/api/*`**, quindi i contatori live continuano ad aggiornarsi ogni 5 secondi anche da app installata. Fa cache degli asset statici (stale-while-revalidate) e ha un fallback offline (`public/offline.html`).
-- Aggiornamenti automatici: al deploy di una nuova versione il SW si attiva subito (`skipWaiting` + `clients.claim`) e la pagina si ricarica una volta da sola. L'header `Cache-Control: no-store` su `/sw.js` (in `next.config.ts`) evita che il SW resti bloccato in cache.
+- Service worker servito da `app/sw.js/route.ts` (non da `public/`): così vi iniettiamo un ID di build (`NEXT_PUBLIC_BUILD_ID`, in `next.config.ts`: SHA del commit su Vercel, timestamp altrimenti). **Non intercetta mai `/api/*`**, quindi i contatori live continuano ad aggiornarsi ogni 5 secondi anche da app installata. Fa cache degli asset statici (stale-while-revalidate) e ha un fallback offline (`public/offline.html`).
+- **Popup di aggiornamento**: quando pubblichi un nuovo deploy, cambiando l'ID di build cambiano i byte del SW → il browser rileva la nuova versione (controllo all'avvio, ogni 60s e al focus della tab) e compare un popup **"È disponibile una nuova versione · Aggiorna"**. Al click il SW in attesa fa `skipWaiting` e la pagina si ricarica sulla versione nuova. Il file `/sw.js` è servito con `Cache-Control: no-store` così non resta bloccato in cache.
 
-Per rigenerare le icone: `node scripts/gen-icons.mjs public` (se conservi lo script) — sono comunque già committate.
+Per rigenerare le icone: `node scripts/gen-icons.mjs public` — sono comunque già committate.
 
 ## Limiti (API ufficiale)
 

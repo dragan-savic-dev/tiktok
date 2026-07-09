@@ -8,6 +8,7 @@ export default function StatCard({
   delta,
   icon,
   accent = "cyan",
+  className = "",
 }: {
   label: string;
   /** null = dato non disponibile (mostra N/D). */
@@ -15,9 +16,12 @@ export default function StatCard({
   delta?: number;
   icon: ReactNode;
   accent?: "cyan" | "pink";
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+    <div
+      className={`flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 ${className}`}
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-widest text-zinc-400">
           {label}
