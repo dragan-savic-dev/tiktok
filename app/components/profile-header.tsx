@@ -16,15 +16,15 @@ export default function ProfileHeader({ user }: { user: TikTokUser }) {
           <img
             src={avatar}
             alt={user.display_name ?? "Avatar"}
-            className="relative h-20 w-20 rounded-full border-2 border-black object-cover"
+            className="relative h-16 w-16 rounded-full border-2 border-black sm:h-20 sm:w-20 object-cover"
           />
         ) : (
-          <div className="relative h-20 w-20 rounded-full border-2 border-black bg-zinc-800" />
+          <div className="relative h-16 w-16 rounded-full border-2 border-black sm:h-20 sm:w-20 bg-zinc-800" />
         )}
       </div>
       <div className="flex flex-col items-center gap-0.5">
         <div className="flex items-center gap-1.5">
-          <h1 className="text-xl font-bold text-white">
+          <h1 className="text-lg font-bold text-white sm:text-xl">
             {user.display_name ?? "Profilo TikTok"}
           </h1>
           {user.is_verified && <VerifiedIcon className="h-5 w-5 text-tt-cyan" />}

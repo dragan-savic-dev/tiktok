@@ -11,6 +11,7 @@ import {
   TikTokIcon,
 } from "@/app/components/icons";
 import DeltaBadge from "@/app/components/delta-badge";
+import InstallButton from "@/app/components/install-button";
 import LiveIndicator from "@/app/components/live-indicator";
 import OdometerNumber from "@/app/components/odometer-number";
 import ProfileHeader from "@/app/components/profile-header";
@@ -82,8 +83,9 @@ export default function DashboardClient() {
             <TikTokIcon className="h-5 w-5" />
             <span>TikTok Live Stats</span>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
             <LiveIndicator tick={tick} error={!!error} />
+            <InstallButton compact />
             <a
               href="/api/auth/logout"
               className="text-sm text-zinc-400 transition-colors hover:text-white"
@@ -94,7 +96,7 @@ export default function DashboardClient() {
         </div>
       </header>
 
-      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col items-center justify-center gap-6 px-6 pb-6">
+      <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col items-center justify-center gap-6 px-6 pb-6 pt-10 sm:pt-6">
         {error && (
           <p className="w-full rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-300">
             Errore nell’aggiornamento: {error} — nuovo tentativo tra 5 secondi.
@@ -112,56 +114,56 @@ export default function DashboardClient() {
 
             <section className="flex flex-row items-end justify-center gap-8 sm:gap-14">
               <div className="flex flex-col items-center gap-2">
-                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs sm:tracking-[0.3em]">
                   Seguiti
                 </span>
                 {/* Badge in absolute: appare di fianco senza spostare il numero centrato */}
                 <div className="relative">
                   <OdometerNumber
                     value={stats.user.following_count ?? 0}
-                    className="text-3xl font-bold text-white sm:text-4xl"
+                    className="text-2xl font-bold text-white sm:text-4xl"
                   />
                   <DeltaBadge
                     delta={followingDelta}
-                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-sm"
+                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-xs sm:text-sm"
                   />
                 </div>
               </div>
               <div className="flex flex-col items-center gap-2">
-                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs sm:tracking-[0.3em]">
                   Follower
                 </span>
                 <div className="relative">
                   <OdometerNumber
                     value={stats.user.follower_count ?? 0}
-                    className="text-3xl font-bold text-white sm:text-4xl"
+                    className="text-2xl font-bold text-white sm:text-4xl"
                   />
                   <DeltaBadge
                     delta={followerDelta}
-                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-sm"
+                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-xs sm:text-sm"
                   />
                 </div>
               </div>
               {/* Su mobile "Mi piace" scende tra i totali (sotto le views) */}
               <div className="hidden flex-col items-center gap-2 sm:flex">
-                <span className="text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs sm:tracking-[0.3em]">
                   Mi piace
                 </span>
                 <div className="relative">
                   <OdometerNumber
                     value={stats.user.likes_count ?? 0}
-                    className="text-3xl font-bold text-white sm:text-4xl"
+                    className="text-2xl font-bold text-white sm:text-4xl"
                   />
                   <DeltaBadge
                     delta={profileLikesDelta}
-                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-sm"
+                    className="absolute left-full top-1/2 ml-2 -translate-y-1/2 text-xs sm:text-sm"
                   />
                 </div>
               </div>
             </section>
 
             <section className="flex w-full flex-col gap-3">
-              <h2 className="text-center text-xs font-medium uppercase tracking-[0.3em] text-zinc-400">
+              <h2 className="text-center text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs sm:tracking-[0.3em]">
                 Totali su tutti i video
               </h2>
               <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

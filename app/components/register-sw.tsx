@@ -26,13 +26,21 @@ export default function RegisterSW() {
     let interval: ReturnType<typeof setInterval> | undefined;
     let cleanupFocus = () => {};
 
+    // Il popup di aggiornamento esce solo nella PWA installata (standalone),
+    // non nel browser normale.
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+
     navigator.serviceWorker
       .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
         // Mostra il popup solo per un AGGIORNAMENTO (c'è già un SW che controlla
         // la pagina), non alla primissima installazione.
         const promptIfUpdate = (worker: ServiceWorker | null) => {
-          if (worker && navigator.serviceWorker.controller) setWaiting(worker);
+          if (worker && navigator.serviceWorker.controller && isStandalone) {
+            setWaiting(worker);
+          }
         };
 
         promptIfUpdate(registration.waiting);

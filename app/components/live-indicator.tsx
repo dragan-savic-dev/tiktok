@@ -3,7 +3,7 @@
 const RING_CIRCUMFERENCE = 50.265;
 
 export default function LiveIndicator({ tick, error }: { tick: number; error: boolean }) {
-  const dotColor = error ? "bg-amber-400" : "bg-tt-cyan";
+  const dotColor = error ? "bg-amber-400" : "bg-tt-pink";
 
   return (
     <div className="flex items-center gap-2.5" title="Aggiornamento automatico ogni 5 secondi">
