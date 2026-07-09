@@ -66,10 +66,11 @@ export default function InstallButton({ compact = false }: { compact?: boolean }
       <button
         onClick={install}
         title="Installa l’app"
-        className="flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:border-tt-cyan/60 hover:text-white"
+        aria-label="Installa l’app"
+        className="flex items-center gap-1.5 rounded-full border border-white/15 px-2 py-2 text-xs font-medium text-zinc-200 transition-colors hover:border-tt-cyan/60 hover:text-white sm:px-3 sm:py-1.5"
       >
         <DownloadIcon className="h-3.5 w-3.5" />
-        Installa
+        <span className="hidden sm:inline">Installa</span>
       </button>
     );
   }
