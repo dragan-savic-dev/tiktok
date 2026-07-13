@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# snapshot storici delle statistiche (store su filesystem)
+/.data
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

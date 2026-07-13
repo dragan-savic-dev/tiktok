@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOrFetch } from "@/lib/cache";
+import { recordSnapshot } from "@/lib/history";
 import { getOpenId, getValidAccessToken } from "@/lib/session";
 import {
   TikTokApiError,
@@ -48,7 +49,32 @@ export async function GET() {
       getTotalSavedCount(openId, videos),
     );
 
-    const payload: StatsResponse = { user, totals, saved, fetchedAt: Date.now() };
+    const payload: StatsResponse = {
+      user,
+      totals,
+      videos,
+      saved,
+      fetchedAt: Date.now(),
+    };
+
+    // Alimenta lo storico (throttlato a 1/min, best-effort: non deve mai
+    // ritardare o rompere la risposta).
+    try {
+      await recordSnapshot(openId, {
+        t: payload.fetchedAt,
+        followers: user.follower_count ?? 0,
+        following: user.following_count ?? 0,
+        likes: user.likes_count ?? 0,
+        views: totals.views,
+        comments: totals.comments,
+        shares: totals.shares,
+        saved,
+        videos: totals.videosCounted,
+      });
+    } catch {
+      // persistenza best-effort
+    }
+
     return NextResponse.json(payload);
   } catch (err) {
     if (err instanceof TikTokApiError && err.isAuthError) {

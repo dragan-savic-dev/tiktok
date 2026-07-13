@@ -34,7 +34,50 @@ export interface VideoTotals {
 export interface StatsResponse {
   user: TikTokUser;
   totals: VideoTotals;
+  /** Statistiche per singolo video, ordinate come le ritorna TikTok (dalla più recente). */
+  videos: VideoStats[];
   /** Totale "salvati" via scraping delle pagine pubbliche; null se non disponibile. */
   saved: number | null;
   fetchedAt: number;
+}
+
+/** Fotografia delle statistiche in un istante, salvata nello store storico. */
+export interface HistorySnapshot {
+  /** Epoch ms del momento in cui è stata registrata. */
+  t: number;
+  followers: number;
+  following: number;
+  /** Mi piace totali del profilo (user.likes_count). */
+  likes: number;
+  views: number;
+  comments: number;
+  shares: number;
+  saved: number | null;
+  /** Numero di video pubblici conteggiati. */
+  videos: number;
+}
+
+/** Un punto giornaliero: l'ultimo valore noto di quel giorno. */
+export interface DailyPoint extends HistorySnapshot {
+  /** Giorno in formato YYYY-MM-DD (fuso orario del server). */
+  day: string;
+}
+
+/** Variazione di una metrica su una finestra; null se lo storico non basta. */
+export interface HistoryDelta {
+  today: number | null;
+  week: number | null;
+}
+
+export interface HistoryResponse {
+  daily: DailyPoint[];
+  deltas: {
+    followers: HistoryDelta;
+    views: HistoryDelta;
+    likes: HistoryDelta;
+  };
+  /** Epoch ms dello snapshot più vecchio disponibile (null se store vuoto). */
+  firstAt: number | null;
+  /** Numero totale di snapshot memorizzati per l'utente. */
+  count: number;
 }

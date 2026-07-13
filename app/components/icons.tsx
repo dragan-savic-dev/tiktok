@@ -107,3 +107,70 @@ export function PlayIcon(props: IconProps) {
     </StrokeIcon>
   );
 }
+
+export function GridIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+    </StrokeIcon>
+  );
+}
+
+export function VideoIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+      <path d="m16 10 6-3v10l-6-3" />
+    </StrokeIcon>
+  );
+}
+
+export function ChartIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M3 3v18h18" />
+      <path d="m7 15 3-4 3 2 5-6" />
+    </StrokeIcon>
+  );
+}
+
+export function TrendUpIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M22 7 13.5 15.5 8.5 10.5 2 17" />
+      <path d="M16 7h6v6" />
+    </StrokeIcon>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </StrokeIcon>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </StrokeIcon>
+  );
+}
+
+export function LogoutIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </StrokeIcon>
+  );
+}
