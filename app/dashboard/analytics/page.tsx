@@ -3,6 +3,7 @@
 import { Card } from "@/app/components/card";
 import BarChart from "@/app/components/bar-chart";
 import DonutChart from "@/app/components/donut-chart";
+import RankedBars from "@/app/components/ranked-bars";
 import {
   engagementRate,
   formatCompact,
@@ -43,7 +44,6 @@ export default function AnalyticsPage() {
   }));
 
   const topByViews = topVideosBy(videos, (v) => v.view_count ?? 0, TOP_COUNT);
-  const maxTopViews = Math.max(1, ...topByViews.map((v) => v.view_count ?? 0));
 
   // Concentrazione: quanta parte delle view arriva dai 10 video migliori.
   const top10Views = topVideosBy(videos, (v) => v.view_count ?? 0, 10).reduce(
@@ -66,21 +66,17 @@ export default function AnalyticsPage() {
       {error && <ErrorBanner message={error} />}
 
       <p className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs text-zinc-500">
-        I grafici usano le statistiche <strong className="text-zinc-300">attuali</strong> di
-        ogni video. Per veri andamenti nel tempo (crescita giornaliera, picchi)
-        servirebbe salvare gli snapshot lato server: è il prossimo passo naturale.
+        Questi grafici fotografano lo stato <strong className="text-zinc-300">attuale</strong> di
+        ogni video. Per l’andamento nel tempo (crescita giornaliera, picchi) vai
+        alla sezione <strong className="text-zinc-300">Crescita</strong>.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={`Visualizzazioni · ultimi ${recent.length} video`}>
-          <div className="h-52">
-            <BarChart bars={viewBars} color={CHART_COLORS.cyan} />
-          </div>
+          <BarChart bars={viewBars} color={CHART_COLORS.cyan} />
         </Card>
         <Card title={`Interazioni · ultimi ${recent.length} video`}>
-          <div className="h-52">
-            <BarChart bars={engagementBars} color={CHART_COLORS.pink} />
-          </div>
+          <BarChart bars={engagementBars} color={CHART_COLORS.pink} />
         </Card>
       </div>
 
@@ -108,39 +104,13 @@ export default function AnalyticsPage() {
           {topByViews.length === 0 ? (
             <p className="text-sm text-zinc-500">Nessun video disponibile.</p>
           ) : (
-            <ul className="flex flex-col gap-3">
-              {topByViews.map((v, i) => (
-                <li key={v.id} className="flex items-center gap-3">
-                  <span className="w-5 shrink-0 text-right text-xs font-semibold text-zinc-500">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
-                      <a
-                        href={v.share_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="truncate text-zinc-300 hover:text-tt-cyan"
-                      >
-                        Video #{v.id.slice(-6)}
-                      </a>
-                      <span className="shrink-0 font-semibold text-white">
-                        {formatCompact(v.view_count)}
-                      </span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${((v.view_count ?? 0) / maxTopViews) * 100}%`,
-                          background: `linear-gradient(to right, ${CHART_COLORS.pink}, ${CHART_COLORS.cyan})`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <RankedBars
+              color={CHART_COLORS.pink}
+              items={topByViews.map((v, i) => ({
+                label: `#${i + 1}`,
+                value: v.view_count ?? 0,
+              }))}
+            />
           )}
         </Card>
       </div>

@@ -1,4 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import ChartTooltip from "./chart-tooltip";
 
 export interface DonutSegment {
   label: string;
@@ -8,9 +12,8 @@ export interface DonutSegment {
 }
 
 /**
- * Anello a segmenti stile "Total Revenue": ogni fetta è un arco calcolato via
- * stroke-dasharray. Al centro può stare qualsiasi contenuto (numero grande).
- * SVG a mano come il resto del progetto: nessuna libreria di charting.
+ * Anello a segmenti su Recharts a dimensione fissa (`size`). Il contenuto
+ * centrale (`center`) è sovrapposto in overlay.
  */
 export default function DonutChart({
   segments,
@@ -25,52 +28,34 @@ export default function DonutChart({
   center?: ReactNode;
   className?: string;
 }) {
-  const total = segments.reduce((sum, s) => sum + Math.max(0, s.value), 0);
-  const radius = (size - thickness) / 2;
-  const circumference = 2 * Math.PI * radius;
-  // Piccolo distacco tra le fette per leggibilità (in unità di circonferenza).
-  const gap = total > 0 && segments.length > 1 ? circumference * 0.006 : 0;
-
-  let offset = 0;
+  const outer = size / 2;
+  const inner = Math.max(0, outer - thickness);
 
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeOpacity={0.08}
-          strokeWidth={thickness}
-          className="text-white"
-        />
-        {total > 0 &&
-          segments.map((s, i) => {
-            const fraction = Math.max(0, s.value) / total;
-            const length = Math.max(0, fraction * circumference - gap);
-            const dash = `${length} ${circumference - length}`;
-            const circle = (
-              <circle
-                key={i}
-                cx={size / 2}
-                cy={size / 2}
-                r={radius}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={thickness}
-                strokeLinecap="round"
-                strokeDasharray={dash}
-                strokeDashoffset={-offset}
-              />
-            );
-            offset += fraction * circumference;
-            return circle;
-          })}
-      </svg>
+      <PieChart width={size} height={size}>
+        <Pie
+          data={segments}
+          dataKey="value"
+          nameKey="label"
+          cx={outer}
+          cy={outer}
+          innerRadius={inner}
+          outerRadius={outer}
+          paddingAngle={2}
+          startAngle={90}
+          endAngle={-270}
+          stroke="none"
+          isAnimationActive={false}
+        >
+          {segments.map((s) => (
+            <Cell key={s.label} fill={s.color} />
+          ))}
+        </Pie>
+        <Tooltip content={<ChartTooltip />} />
+      </PieChart>
       {center && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           {center}
         </div>
       )}

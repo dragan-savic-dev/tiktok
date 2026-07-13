@@ -1,8 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { PolarAngleAxis, RadialBar, RadialBarChart } from "recharts";
 
 /**
- * Anello di progresso circolare stile "Today's Sales / Daily Visitors":
- * mostra una frazione 0..1 come arco colorato. Il contenuto centrale è libero.
+ * Gauge circolare su Recharts (RadialBar) a dimensione fissa. `fraction` 0..1
+ * riempie l'arco; il PolarAngleAxis con dominio [0,100] mappa il valore
+ * all'angolo.
  */
 export default function Gauge({
   fraction,
@@ -19,38 +23,33 @@ export default function Gauge({
   center?: ReactNode;
   className?: string;
 }) {
-  const clamped = Math.max(0, Math.min(1, fraction));
-  const radius = (size - thickness) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const dash = clamped * circumference;
+  const pct = Math.max(0, Math.min(1, fraction)) * 100;
+  const outer = size / 2;
+  const inner = Math.max(0, outer - thickness);
 
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeOpacity={0.1}
-          strokeWidth={thickness}
-          className="text-white"
+      <RadialBarChart
+        width={size}
+        height={size}
+        cx={outer}
+        cy={outer}
+        innerRadius={inner}
+        outerRadius={outer}
+        startAngle={90}
+        endAngle={-270}
+        data={[{ value: pct, fill: color }]}
+      >
+        <PolarAngleAxis type="number" domain={[0, 100]} tick={false} axisLine={false} />
+        <RadialBar
+          dataKey="value"
+          background={{ fill: "rgba(255,255,255,0.08)" }}
+          cornerRadius={thickness / 2}
+          isAnimationActive={false}
         />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={thickness}
-          strokeLinecap="round"
-          strokeDasharray={`${dash} ${circumference - dash}`}
-          className="transition-[stroke-dasharray] duration-700 ease-out"
-        />
-      </svg>
+      </RadialBarChart>
       {center && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           {center}
         </div>
       )}
