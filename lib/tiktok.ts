@@ -78,13 +78,37 @@ export function redirectUri(): string {
   return `${appUrl()}/api/auth/callback`;
 }
 
-export function buildAuthUrl(state: string): string {
+// PKCE è obbligatorio: TikTok rifiuta l'autorizzazione senza code_challenge.
+// Attenzione: TikTok vuole lo SHA256 in esadecimale, non in base64url come
+// nello standard RFC 7636. code_challenge_method supportato: solo "S256".
+export function generateCodeVerifier(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  // base64url usa solo caratteri "unreserved", validi per il code_verifier.
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export async function deriveCodeChallenge(verifier: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(verifier),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export function buildAuthUrl(state: string, codeChallenge: string): string {
   const url = new URL(AUTHORIZE_URL);
   url.searchParams.set("client_key", requireEnv("TIKTOK_CLIENT_KEY"));
   url.searchParams.set("scope", OAUTH_SCOPES);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("redirect_uri", redirectUri());
   url.searchParams.set("state", state);
+  url.searchParams.set("code_challenge", codeChallenge);
+  url.searchParams.set("code_challenge_method", "S256");
   return url.toString();
 }
 
@@ -112,11 +136,15 @@ async function requestToken(params: Record<string, string>): Promise<TokenRespon
   return body as TokenResponse;
 }
 
-export function exchangeCode(code: string): Promise<TokenResponse> {
+export function exchangeCode(
+  code: string,
+  codeVerifier: string,
+): Promise<TokenResponse> {
   return requestToken({
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri(),
+    code_verifier: codeVerifier,
   });
 }
 

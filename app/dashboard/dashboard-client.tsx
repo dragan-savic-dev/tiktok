@@ -17,6 +17,7 @@ import ProfileHeader from "@/app/components/profile-header";
 import StatCard from "@/app/components/stat-card";
 
 const POLL_MS = 5000;
+const STORAGE_KEY = "tiktok-live-stats:last";
 
 export default function DashboardClient() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
@@ -24,6 +25,8 @@ export default function DashboardClient() {
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const lastRef = useRef<StatsResponse | null>(null);
+  // Il valore in lastRef proviene dalla cache: non usarlo per calcolare i delta.
+  const lastFromCacheRef = useRef(false);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -36,14 +39,35 @@ export default function DashboardClient() {
       if (!res.ok) {
         throw new Error(typeof body?.message === "string" ? body.message : `HTTP ${res.status}`);
       }
-      setPrevious(lastRef.current);
+      setPrevious(lastFromCacheRef.current ? null : lastRef.current);
+      lastFromCacheRef.current = false;
       lastRef.current = body as StatsResponse;
       setStats(body as StatsResponse);
       setError(null);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(body));
+      } catch {
+        // localStorage non disponibile (modalità privata / quota): ignora
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore di rete");
     } finally {
       setTick((t) => t + 1);
+    }
+  }, []);
+
+  // Idrata subito con i dati salvati per evitare il loader di 5 secondi al rientro.
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached) as StatsResponse;
+        lastRef.current = parsed;
+        lastFromCacheRef.current = true;
+        setStats(parsed);
+      }
+    } catch {
+      // dati salvati non validi: ignora e attendi il fetch
     }
   }, []);
 

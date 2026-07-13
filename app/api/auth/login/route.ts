@@ -1,19 +1,29 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { STATE_COOKIE } from "@/lib/session";
-import { appUrl, buildAuthUrl } from "@/lib/tiktok";
+import { STATE_COOKIE, VERIFIER_COOKIE } from "@/lib/session";
+import {
+  appUrl,
+  buildAuthUrl,
+  deriveCodeChallenge,
+  generateCodeVerifier,
+} from "@/lib/tiktok";
 
 export async function GET() {
   const state = crypto.randomUUID();
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await deriveCodeChallenge(codeVerifier);
 
-  const store = await cookies();
-  store.set(STATE_COOKIE, state, {
+  const cookieOptions = {
     httpOnly: true,
     secure: appUrl().startsWith("https"),
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge: 600,
-  });
+  };
 
-  return NextResponse.redirect(buildAuthUrl(state));
+  const store = await cookies();
+  store.set(STATE_COOKIE, state, cookieOptions);
+  store.set(VERIFIER_COOKIE, codeVerifier, cookieOptions);
+
+  return NextResponse.redirect(buildAuthUrl(state, codeChallenge));
 }

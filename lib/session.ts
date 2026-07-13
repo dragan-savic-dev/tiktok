@@ -6,6 +6,7 @@ const REFRESH_COOKIE = "tt_refresh_token";
 const EXPIRES_COOKIE = "tt_expires_at";
 const OPEN_ID_COOKIE = "tt_open_id";
 export const STATE_COOKIE = "tt_oauth_state";
+export const VERIFIER_COOKIE = "tt_oauth_verifier";
 
 // Rinnova l'access token quando mancano meno di 2 minuti alla scadenza,
 // così nessuna richiesta parte con un token sul punto di morire.

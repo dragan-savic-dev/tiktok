@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
-import { STATE_COOKIE, setAuthCookies } from "@/lib/session";
+import { STATE_COOKIE, VERIFIER_COOKIE, setAuthCookies } from "@/lib/session";
 import { appUrl, exchangeCode } from "@/lib/tiktok";
 
 export async function GET(request: NextRequest) {
@@ -11,17 +11,19 @@ export async function GET(request: NextRequest) {
 
   const store = await cookies();
   const expectedState = store.get(STATE_COOKIE)?.value;
+  const codeVerifier = store.get(VERIFIER_COOKIE)?.value;
   store.delete(STATE_COOKIE);
+  store.delete(VERIFIER_COOKIE);
 
   if (oauthError) {
     return NextResponse.redirect(new URL(`/?error=${oauthError}`, appUrl()));
   }
-  if (!code || !state || !expectedState || state !== expectedState) {
+  if (!code || !state || !expectedState || state !== expectedState || !codeVerifier) {
     return NextResponse.redirect(new URL("/?error=invalid_state", appUrl()));
   }
 
   try {
-    const token = await exchangeCode(code);
+    const token = await exchangeCode(code, codeVerifier);
     await setAuthCookies(token);
     return NextResponse.redirect(new URL("/dashboard", appUrl()));
   } catch (err) {
