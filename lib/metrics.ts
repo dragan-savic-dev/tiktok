@@ -6,6 +6,25 @@ export function videoEngagement(v: VideoStats): number {
 }
 
 /**
+ * Nome leggibile di un video: titolo, altrimenti la didascalia (troncata),
+ * altrimenti la data di pubblicazione, con l'id come ultima spiaggia.
+ */
+export function videoTitle(v: VideoStats): string {
+  const title = v.title?.trim();
+  if (title) return title;
+  const desc = v.video_description?.trim();
+  if (desc) return desc.length > 60 ? `${desc.slice(0, 60)}…` : desc;
+  if (v.create_time) {
+    return new Date(v.create_time * 1000).toLocaleDateString("it-IT", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+  return `Video #${v.id.slice(-6)}`;
+}
+
+/**
  * Engagement rate = interazioni / visualizzazioni. È la metrica standard che
  * i creator guardano: quanto il pubblico reagisce rispetto a quanto guarda.
  * Ritorna una frazione 0..1 (moltiplica per 100 per la percentuale).

@@ -24,7 +24,8 @@ export default function Gauge({
   className?: string;
 }) {
   const pct = Math.max(0, Math.min(1, fraction)) * 100;
-  const outer = size / 2;
+  const mid = size / 2;
+  const outer = mid - 2;
   const inner = Math.max(0, outer - thickness);
 
   return (
@@ -32,8 +33,8 @@ export default function Gauge({
       <RadialBarChart
         width={size}
         height={size}
-        cx={outer}
-        cy={outer}
+        cx={mid}
+        cy={mid}
         innerRadius={inner}
         outerRadius={outer}
         startAngle={90}

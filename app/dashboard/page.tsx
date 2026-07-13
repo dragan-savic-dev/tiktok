@@ -1,13 +1,15 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import {
   BookmarkIcon,
   CommentIcon,
   EyeIcon,
+  HeartIcon,
   ShareIcon,
 } from "@/app/components/icons";
-import { Card, LegendItem } from "@/app/components/card";
+import { Card } from "@/app/components/card";
 import DeltaBadge from "@/app/components/delta-badge";
 import DonutChart from "@/app/components/donut-chart";
 import Gauge from "@/app/components/gauge";
@@ -18,6 +20,7 @@ import {
   formatCompact,
   formatPercent,
   perVideoAverage,
+  videoTitle,
 } from "@/lib/metrics";
 import { useStats } from "./stats-context";
 import { CHART_COLORS, ErrorBanner, Loading } from "./shared";
@@ -85,15 +88,15 @@ export default function OverviewPage() {
       {/* KPI profilo */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <HeroStat
+          label="Seguiti"
+          value={user.following_count ?? 0}
+          delta={delta((s) => s.user.following_count)}
+        />
+        <HeroStat
           label="Follower"
           value={user.follower_count ?? 0}
           delta={delta((s) => s.user.follower_count)}
           accent="pink"
-        />
-        <HeroStat
-          label="Seguiti"
-          value={user.following_count ?? 0}
-          delta={delta((s) => s.user.following_count)}
         />
         <HeroStat
           label="Mi piace"
@@ -120,23 +123,24 @@ export default function OverviewPage() {
                 </>
               }
             />
-            <div className="flex w-full flex-col gap-2">
+            <div className="grid w-full grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 text-sm">
               {interactions.map((i) => (
-                <LegendItem
-                  key={i.label}
-                  color={i.color}
-                  label={i.label}
-                  value={
-                    <span className="flex items-center gap-2">
-                      <span className="text-zinc-500">
-                        {interactionsTotal
-                          ? formatPercent(i.value / interactionsTotal, 0)
-                          : "0%"}
-                      </span>
-                      {i.value.toLocaleString("it-IT")}
-                    </span>
-                  }
-                />
+                <Fragment key={i.label}>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: i.color }}
+                      aria-hidden="true"
+                    />
+                    <span className="text-zinc-400">{i.label}</span>
+                  </div>
+                  <span className="w-10 text-right tabular-nums text-zinc-500">
+                    {interactionsTotal ? formatPercent(i.value / interactionsTotal, 0) : "0%"}
+                  </span>
+                  <span className="w-20 text-right font-semibold tabular-nums text-white">
+                    {i.value.toLocaleString("it-IT")}
+                  </span>
+                </Fragment>
               ))}
             </div>
           </div>
@@ -149,25 +153,28 @@ export default function OverviewPage() {
               value={totals.views}
               delta={delta((s) => s.totals.views)}
               icon={<EyeIcon className="h-4 w-4" />}
+              accent="cyan"
             />
             <StatCard
               label="Commenti"
               value={totals.comments}
               delta={delta((s) => s.totals.comments)}
               icon={<CommentIcon className="h-4 w-4" />}
+              accent="pink"
             />
             <StatCard
               label="Condivisioni"
               value={totals.shares}
               delta={delta((s) => s.totals.shares)}
               icon={<ShareIcon className="h-4 w-4" />}
-              accent="pink"
+              accent="cyan"
             />
             <StatCard
               label="Salvati"
               value={saved}
               delta={delta((s) => s.saved ?? undefined)}
               icon={<BookmarkIcon className="h-4 w-4" />}
+              accent="pink"
             />
           </div>
           <p className="mt-auto text-xs text-zinc-500">
@@ -239,17 +246,28 @@ export default function OverviewPage() {
                         rel="noopener noreferrer"
                         className="hover:text-tt-cyan"
                       >
-                        Video #{v.id.slice(-6)}
+                        {videoTitle(v)}
                       </a>
                     ) : (
-                      `Video #${v.id.slice(-6)}`
+                      videoTitle(v)
                     )}
                   </p>
-                  <p className="text-xs text-zinc-500">
-                    {formatCompact(v.like_count)} like · {formatCompact(v.comment_count)} commenti
-                  </p>
+                  <div className="flex items-center gap-3 text-xs text-zinc-500">
+                    <span className="flex items-center gap-1">
+                      <HeartIcon className="h-3 w-3 text-tt-pink" />
+                      {formatCompact(v.like_count)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <CommentIcon className="h-3 w-3 text-tt-cyan" />
+                      {formatCompact(v.comment_count)}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ShareIcon className="h-3 w-3 text-tt-pink" />
+                      {formatCompact(v.share_count)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-right">
+                <div className="flex shrink-0 items-center gap-1.5 text-right">
                   <EyeIcon className="h-3.5 w-3.5 text-tt-cyan" />
                   <span className="font-semibold text-white">{formatCompact(v.view_count)}</span>
                 </div>

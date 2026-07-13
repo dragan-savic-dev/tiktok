@@ -26,6 +26,9 @@ const USER_FIELDS = [
 const VIDEO_FIELDS = [
   "id",
   "share_url",
+  "title",
+  "video_description",
+  "create_time",
   "view_count",
   "like_count",
   "comment_count",

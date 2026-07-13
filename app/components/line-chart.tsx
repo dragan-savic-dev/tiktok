@@ -6,12 +6,10 @@ import {
   AreaChart,
   CartesianGrid,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { formatCompact } from "@/lib/metrics";
-import ChartTooltip from "./chart-tooltip";
 
 export interface LinePoint {
   label: string;
@@ -58,7 +56,6 @@ export default function LineChart({
           width={48}
           tickFormatter={formatValue}
         />
-        <Tooltip cursor={{ stroke: "rgba(255,255,255,0.2)" }} content={<ChartTooltip />} />
         <Area
           type="monotone"
           dataKey="value"

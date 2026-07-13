@@ -17,6 +17,12 @@ export interface TikTokUser {
 export interface VideoStats {
   id: string;
   share_url?: string;
+  /** Titolo del video (spesso vuoto: molti TikTok non lo impostano). */
+  title?: string;
+  /** Didascalia/descrizione del video. */
+  video_description?: string;
+  /** Data di pubblicazione in secondi Unix. */
+  create_time?: number;
   view_count: number;
   like_count: number;
   comment_count: number;

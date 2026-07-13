@@ -5,11 +5,9 @@ import {
   BarChart as RBarChart,
   CartesianGrid,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import ChartTooltip from "./chart-tooltip";
 
 export interface BarDatum {
   label: string;
@@ -40,7 +38,6 @@ export default function BarChart({
           interval="preserveStartEnd"
         />
         <YAxis hide />
-        <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} content={<ChartTooltip />} />
         <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
       </RBarChart>
     </ResponsiveContainer>

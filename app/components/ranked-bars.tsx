@@ -5,12 +5,10 @@ import {
   BarChart,
   LabelList,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { formatCompact } from "@/lib/metrics";
-import ChartTooltip from "./chart-tooltip";
 
 export interface RankedItem {
   label: string;
@@ -45,7 +43,6 @@ export default function RankedBars({
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} content={<ChartTooltip />} />
         <Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false}>
           <LabelList
             dataKey="value"

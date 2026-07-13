@@ -151,26 +151,34 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
         <SidebarContent />
       </aside>
 
-      {/* Drawer mobile */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+      {/* Drawer mobile: sempre montato, animato via transizioni. `inert` quando
+          chiuso lo esclude da focus e pointer (React 19). */}
+      <div
+        className={`fixed inset-0 z-40 md:hidden ${drawerOpen ? "" : "pointer-events-none"}`}
+        inert={!drawerOpen}
+      >
+        <button
+          aria-label="Chiudi menu"
+          onClick={() => setDrawerOpen(false)}
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+            drawerOpen ? "opacity-100" : "opacity-0"
+          }`}
+        />
+        <div
+          className={`absolute left-0 top-0 h-full w-72 max-w-[80%] border-r border-white/10 bg-[#0a0a0a] shadow-2xl transition-transform duration-300 ease-out ${
+            drawerOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
           <button
             aria-label="Chiudi menu"
             onClick={() => setDrawerOpen(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[80%] border-r border-white/10 bg-[#0a0a0a] shadow-2xl">
-            <button
-              aria-label="Chiudi menu"
-              onClick={() => setDrawerOpen(false)}
-              className="absolute right-3 top-4 rounded-lg p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white"
-            >
-              <CloseIcon className="h-5 w-5" />
-            </button>
-            <SidebarContent onNavigate={() => setDrawerOpen(false)} />
-          </div>
+            className="absolute right-3 top-4 rounded-lg p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+          <SidebarContent onNavigate={() => setDrawerOpen(false)} />
         </div>
-      )}
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}

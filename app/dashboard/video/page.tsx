@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import { EyeIcon } from "@/app/components/icons";
-import { videoEngagement } from "@/lib/metrics";
+import { videoEngagement, videoTitle } from "@/lib/metrics";
 import { useStats } from "../stats-context";
 import { ErrorBanner, Loading } from "../shared";
 
@@ -24,13 +24,47 @@ function fmt(n: number): string {
   return n.toLocaleString("it-IT");
 }
 
+/** Cella numerica che lampeggia verde se il valore è salito, rosso se sceso. */
+function ValueCell({
+  value,
+  prevValue,
+  weight = "",
+  base,
+}: {
+  value: number;
+  prevValue?: number;
+  weight?: string;
+  base: string;
+}) {
+  const tone =
+    prevValue === undefined || value === prevValue
+      ? null
+      : value > prevValue
+        ? "up"
+        : "down";
+  const color =
+    tone === "up" ? "text-emerald-400" : tone === "down" ? "text-tt-pink" : base;
+  return (
+    <td className={`px-3 py-3 text-right tabular-nums transition-colors duration-700 ${weight} ${color}`}>
+      {fmt(value)}
+    </td>
+  );
+}
+
 export default function VideoPage() {
-  const { stats, error } = useStats();
+  const { stats, previous, error } = useStats();
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [sortDesc, setSortDesc] = useState(true);
   const [page, setPage] = useState(0);
 
   const videos = useMemo(() => stats?.videos ?? [], [stats]);
+
+  // Valori del poll precedente, per id: alimentano il colore su/giù per cella.
+  const prevById = useMemo(() => {
+    const m = new Map<string, VideoStats>();
+    previous?.videos.forEach((v) => m.set(v.id, v));
+    return m;
+  }, [previous]);
 
   const sorted = useMemo(() => {
     if (sortKey === "recent") {
@@ -71,12 +105,9 @@ export default function VideoPage() {
     <div className="flex flex-col gap-5">
       {error && <ErrorBanner message={error} />}
 
-      <Card
-        title={`Tutti i video (${fmt(videos.length)})`}
-        bodyClassName="p-0 sm:p-0"
-      >
+      <Card title={`Tutti i video (${fmt(videos.length)})`} bodyClassName="p-0 sm:p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[640px] select-none text-sm">
             <thead>
               <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
                 <th className="px-4 py-3 font-medium sm:px-5">
@@ -97,6 +128,7 @@ export default function VideoPage() {
             <tbody className="divide-y divide-white/5">
               {rows.map((v, i) => {
                 const rate = v.view_count ? videoEngagement(v) / v.view_count : 0;
+                const prev = prevById.get(v.id);
                 return (
                   <tr key={v.id} className="transition-colors hover:bg-white/[0.02]">
                     <td className="px-4 py-3 sm:px-5">
@@ -110,13 +142,14 @@ export default function VideoPage() {
                               href={v.share_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-medium text-white hover:text-tt-cyan"
+                              className="block max-w-[240px] truncate font-medium text-white hover:text-tt-cyan"
+                              title={videoTitle(v)}
                             >
-                              Video #{v.id.slice(-6)}
+                              {videoTitle(v)}
                             </a>
                           ) : (
-                            <span className="font-medium text-white">
-                              Video #{v.id.slice(-6)}
+                            <span className="block max-w-[240px] truncate font-medium text-white">
+                              {videoTitle(v)}
                             </span>
                           )}
                           <p className="flex items-center gap-1 text-xs text-zinc-500">
@@ -129,19 +162,33 @@ export default function VideoPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right font-semibold text-white">
-                      {fmt(v.view_count ?? 0)}
-                    </td>
-                    <td className="px-3 py-3 text-right text-zinc-300">{fmt(v.like_count ?? 0)}</td>
-                    <td className="px-3 py-3 text-right text-zinc-300">
-                      {fmt(v.comment_count ?? 0)}
-                    </td>
-                    <td className="px-3 py-3 text-right text-zinc-300">
-                      {fmt(v.share_count ?? 0)}
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold text-tt-cyan">
-                      {fmt(videoEngagement(v))}
-                    </td>
+                    <ValueCell
+                      value={v.view_count ?? 0}
+                      prevValue={prev?.view_count}
+                      weight="font-semibold"
+                      base="text-white"
+                    />
+                    <ValueCell
+                      value={v.like_count ?? 0}
+                      prevValue={prev?.like_count}
+                      base="text-zinc-300"
+                    />
+                    <ValueCell
+                      value={v.comment_count ?? 0}
+                      prevValue={prev?.comment_count}
+                      base="text-zinc-300"
+                    />
+                    <ValueCell
+                      value={v.share_count ?? 0}
+                      prevValue={prev?.share_count}
+                      base="text-zinc-300"
+                    />
+                    <ValueCell
+                      value={videoEngagement(v)}
+                      prevValue={prev ? videoEngagement(prev) : undefined}
+                      weight="font-semibold"
+                      base="text-tt-cyan"
+                    />
                   </tr>
                 );
               })}

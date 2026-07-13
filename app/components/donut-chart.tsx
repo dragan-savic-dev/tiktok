@@ -1,8 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Cell, Pie, PieChart, Tooltip } from "recharts";
-import ChartTooltip from "./chart-tooltip";
+import { Cell, Pie, PieChart } from "recharts";
 
 export interface DonutSegment {
   label: string;
@@ -13,7 +12,8 @@ export interface DonutSegment {
 
 /**
  * Anello a segmenti su Recharts a dimensione fissa (`size`). Il contenuto
- * centrale (`center`) è sovrapposto in overlay.
+ * centrale (`center`) è sovrapposto in overlay. Un piccolo margine tiene il
+ * bordo esterno staccato dal viewport dell'SVG per non tagliarlo.
  */
 export default function DonutChart({
   segments,
@@ -28,7 +28,8 @@ export default function DonutChart({
   center?: ReactNode;
   className?: string;
 }) {
-  const outer = size / 2;
+  const mid = size / 2;
+  const outer = mid - 3;
   const inner = Math.max(0, outer - thickness);
 
   return (
@@ -38,8 +39,8 @@ export default function DonutChart({
           data={segments}
           dataKey="value"
           nameKey="label"
-          cx={outer}
-          cy={outer}
+          cx={mid}
+          cy={mid}
           innerRadius={inner}
           outerRadius={outer}
           paddingAngle={2}
@@ -52,7 +53,6 @@ export default function DonutChart({
             <Cell key={s.label} fill={s.color} />
           ))}
         </Pie>
-        <Tooltip content={<ChartTooltip />} />
       </PieChart>
       {center && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">

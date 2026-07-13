@@ -24,6 +24,21 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/* Tailwind v4 lascia ai bottoni il cursore di default: lo riportiamo a "pointer". */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+/* Selezione testo a tema: il default bianco creava una "riga" vistosa quando si
+   cliccavano le intestazioni ordinabili della tabella. */
+::selection {
+  background: color-mix(in oklab, var(--color-tt-cyan) 30%, transparent);
+  color: #fff;
+}
+
 /* Su mobile la pagina scrolla ma la scrollbar resta nascosta */
 @media (max-width: 767px) {
   html,
