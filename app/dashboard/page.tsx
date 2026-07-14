@@ -29,17 +29,14 @@ function HeroStat({
   label,
   value,
   delta,
-  accent = "white",
 }: {
   label: string;
   value: number;
   delta?: number;
-  accent?: "white" | "pink" | "cyan";
 }) {
-  const base =
-    accent === "pink" ? "text-tt-pink" : accent === "cyan" ? "text-tt-cyan" : "text-white";
   const dir = useValueFlash(value);
-  const color = dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : base;
+  const color =
+    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
     <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
       <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">
@@ -144,7 +141,6 @@ export default function OverviewPage() {
               label="Follower"
               value={user.follower_count ?? 0}
               delta={delta((s) => s.user.follower_count)}
-              accent="pink"
             />
             {/* Mi piace: su mobile scende tra i totali (sotto); torna qui da lg. */}
             <div className="hidden lg:block">
@@ -152,7 +148,6 @@ export default function OverviewPage() {
                 label="Mi piace"
                 value={user.likes_count ?? 0}
                 delta={delta((s) => s.user.likes_count)}
-                accent="cyan"
               />
             </div>
           </div>
@@ -176,7 +171,6 @@ export default function OverviewPage() {
                   label="Mi piace"
                   value={user.likes_count ?? 0}
                   delta={delta((s) => s.user.likes_count)}
-                  accent="cyan"
                 />
               </div>
               <StatCard
