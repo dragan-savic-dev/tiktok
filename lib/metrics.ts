@@ -5,6 +5,26 @@ export function videoEngagement(v: VideoStats): number {
   return (v.like_count ?? 0) + (v.comment_count ?? 0) + (v.share_count ?? 0);
 }
 
+/** Tasso di engagement di un video: interazioni / visualizzazioni (0..1). */
+export function videoEngagementRate(v: VideoStats): number {
+  return v.view_count ? videoEngagement(v) / v.view_count : 0;
+}
+
+/** Moltiplicatore rispetto a un riferimento, es. "1,8×". */
+export function formatMultiplier(value: number, reference: number): string {
+  if (!reference) return "—";
+  const ratio = value / reference;
+  return `${ratio.toLocaleString("it-IT", { maximumFractionDigits: 1 })}×`;
+}
+
+/** Durata in secondi -> "m:ss". */
+export function formatDuration(seconds: number | undefined): string | null {
+  if (!seconds || seconds <= 0) return null;
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 /**
  * Nome leggibile di un video: titolo o didascalia, ma solo la prima riga e
  * senza hashtag (le didascalie TikTok sono tipo "Ring Escape - Level 300

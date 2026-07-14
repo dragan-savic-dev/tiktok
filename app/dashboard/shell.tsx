@@ -144,9 +144,9 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
   const active = NAV.find((item) => isActive(pathname, item));
   const title = active?.label ?? "Dashboard";
 
-  // Solo la pagina Video usa lo shell ad altezza fissa (tabella scrollabile
-  // internamente). Le altre scrollano normalmente come documento.
-  const fixedHeight = pathname.startsWith("/dashboard/video");
+  // Solo la lista Video usa lo shell ad altezza fissa (tabella scrollabile
+  // internamente). Il dettaglio e le altre pagine scrollano come documento.
+  const fixedHeight = pathname === "/dashboard/video";
 
   return (
     <div className={`flex bg-[#050505] ${fixedHeight ? "h-dvh overflow-hidden" : "min-h-dvh"}`}>

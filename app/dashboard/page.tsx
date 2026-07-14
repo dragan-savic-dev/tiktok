@@ -246,18 +246,9 @@ export default function OverviewPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-white">
-                    {v.share_url ? (
-                      <a
-                        href={v.share_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:text-tt-cyan"
-                      >
-                        {videoTitle(v)}
-                      </a>
-                    ) : (
-                      videoTitle(v)
-                    )}
+                    <Link href={`/dashboard/video/${v.id}`} className="hover:text-tt-cyan">
+                      {videoTitle(v)}
+                    </Link>
                   </p>
                   <div className="flex items-center gap-3 text-xs text-zinc-500">
                     <span className="flex items-center gap-1">

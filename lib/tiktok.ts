@@ -29,6 +29,8 @@ const VIDEO_FIELDS = [
   "title",
   "video_description",
   "create_time",
+  "cover_image_url",
+  "duration",
   "view_count",
   "like_count",
   "comment_count",

@@ -23,6 +23,10 @@ export interface VideoStats {
   video_description?: string;
   /** Data di pubblicazione in secondi Unix. */
   create_time?: number;
+  /** URL della copertina (CDN TikTok, a scadenza). */
+  cover_image_url?: string;
+  /** Durata del video in secondi. */
+  duration?: number;
   view_count: number;
   like_count: number;
   comment_count: number;

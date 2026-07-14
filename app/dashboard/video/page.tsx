@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ComponentType, type SVGProps } from "react";
+import Link from "next/link";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import {
@@ -148,21 +149,13 @@ export default function VideoPage() {
                           {current * PAGE_SIZE + i + 1}
                         </span>
                         <div className="min-w-0">
-                          {v.share_url ? (
-                            <a
-                              href={v.share_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block max-w-[240px] truncate font-medium text-white hover:text-tt-cyan"
-                              title={videoTitle(v)}
-                            >
-                              {videoTitle(v)}
-                            </a>
-                          ) : (
-                            <span className="block max-w-[240px] truncate font-medium text-white">
-                              {videoTitle(v)}
-                            </span>
-                          )}
+                          <Link
+                            href={`/dashboard/video/${v.id}`}
+                            className="block max-w-[240px] truncate font-medium text-white hover:text-tt-cyan"
+                            title={videoTitle(v)}
+                          >
+                            {videoTitle(v)}
+                          </Link>
                           <p className="flex items-center gap-1 text-xs text-zinc-500">
                             <EyeIcon className="h-3 w-3" />
                             {(rate * 100).toLocaleString("it-IT", {
