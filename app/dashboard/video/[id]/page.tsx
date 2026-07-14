@@ -7,6 +7,7 @@ import { Card } from "@/app/components/card";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
 import {
+  BookmarkIcon,
   CommentIcon,
   EyeIcon,
   HeartIcon,
@@ -17,7 +18,6 @@ import {
   formatDuration,
   formatMultiplier,
   formatPercent,
-  videoEngagement,
   videoEngagementRate,
   videoTitle,
 } from "@/lib/metrics";
@@ -38,13 +38,18 @@ function MetricTile({
   label,
   value,
   icon,
+  className = "",
 }: {
   label: string;
-  value: number;
+  /** null = dato non disponibile (mostra N/D). */
+  value: number | null;
   icon: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+    <div
+      className={`flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 ${className}`}
+    >
       <div className="flex items-center justify-between">
         <span className="truncate text-[10px] font-medium uppercase tracking-widest text-zinc-400 sm:text-xs">
           {label}
@@ -52,7 +57,11 @@ function MetricTile({
         <span className="shrink-0 text-tt-cyan">{icon}</span>
       </div>
       <span className="text-xl font-semibold text-white sm:text-2xl">
-        <FlashNumber value={value} />
+        {value === null ? (
+          <span className="text-zinc-500">N/D</span>
+        ) : (
+          <FlashNumber value={value} />
+        )}
       </span>
     </div>
   );
@@ -100,7 +109,7 @@ export default function VideoDetailPage() {
     );
   }
 
-  const { videos, totals } = stats;
+  const { videos, totals, saved: accountSaved } = stats;
   const video = videos.find((v) => v.id === id);
 
   if (!video) {
@@ -121,7 +130,8 @@ export default function VideoDetailPage() {
   const likes = video.like_count ?? 0;
   const comments = video.comment_count ?? 0;
   const shares = video.share_count ?? 0;
-  const eng = videoEngagement(video);
+  // "Salvati" del video via scraping: può mancare (N/D).
+  const saved = video.saved_count ?? null;
   const rate = videoEngagementRate(video);
 
   // Medie del profilo per il confronto.
@@ -147,8 +157,11 @@ export default function VideoDetailPage() {
     { label: "Mi piace", value: likes, color: CHART_COLORS.pink },
     { label: "Commenti", value: comments, color: CHART_COLORS.cyan },
     { label: "Condivisioni", value: shares, color: CHART_COLORS.violet },
+    ...(saved !== null
+      ? [{ label: "Salvati", value: saved, color: CHART_COLORS.amber }]
+      : []),
   ];
-  const interactionsTotal = eng || 1;
+  const interactionsTotal = interactions.reduce((s, i) => s + i.value, 0) || 1;
   const duration = formatDuration(video.duration);
   const date = formatDate(video.create_time);
 
@@ -210,8 +223,13 @@ export default function VideoDetailPage() {
       </Card>
 
       {/* Metriche */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricTile label="Spettatori" value={views} icon={<EyeIcon className="h-4 w-4" />} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <MetricTile
+          label="Spettatori"
+          value={views}
+          icon={<EyeIcon className="h-4 w-4" />}
+          className="col-span-2 lg:col-span-1"
+        />
         <MetricTile label="Mi piace" value={likes} icon={<HeartIcon className="h-4 w-4" />} />
         <MetricTile label="Commenti" value={comments} icon={<CommentIcon className="h-4 w-4" />} />
         <MetricTile
@@ -219,6 +237,7 @@ export default function VideoDetailPage() {
           value={shares}
           icon={<ShareIcon className="h-4 w-4" />}
         />
+        <MetricTile label="Salvati" value={saved} icon={<BookmarkIcon className="h-4 w-4" />} />
       </div>
 
       {/* Coinvolgimento */}
@@ -266,10 +285,17 @@ export default function VideoDetailPage() {
 
         <div className="flex flex-col gap-4 lg:col-span-2">
           <Card title="Intensità · ogni 1.000 visualizzazioni">
-            <div className="grid grid-cols-3 gap-4">
+            <div
+              className={`grid gap-4 ${
+                saved !== null ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
+              }`}
+            >
               <Rate1k label="Mi piace" value={per1k(likes)} color={CHART_COLORS.pink} />
               <Rate1k label="Commenti" value={per1k(comments)} color={CHART_COLORS.cyan} />
               <Rate1k label="Condivisioni" value={per1k(shares)} color={CHART_COLORS.violet} />
+              {saved !== null && (
+                <Rate1k label="Salvati" value={per1k(saved)} color={CHART_COLORS.amber} />
+              )}
             </div>
           </Card>
 
@@ -285,6 +311,9 @@ export default function VideoDetailPage() {
               <CompareRow label="Mi piace" value={likes} average={avg.likes} />
               <CompareRow label="Commenti" value={comments} average={avg.comments} />
               <CompareRow label="Condivisioni" value={shares} average={avg.shares} />
+              {saved !== null && accountSaved !== null && (
+                <CompareRow label="Salvati" value={saved} average={accountSaved / count} />
+              )}
               <div className="mt-1 border-t border-white/5 pt-3">
                 <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
                   <span className="truncate text-zinc-400">Tasso engagement</span>

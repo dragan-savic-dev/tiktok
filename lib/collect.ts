@@ -1,7 +1,7 @@
 import { getOrFetch } from "./cache";
 import { recordSnapshot } from "./history";
 import { aggregateStats, getAllVideoStats, getUserInfo } from "./tiktok";
-import { getTotalSavedCount } from "./tiktok-scrape";
+import { getSavedCounts } from "./tiktok-scrape";
 import type { StatsResponse } from "./types";
 
 // TTL sotto i 5s del polling, così ogni ciclo del client trova dati freschi
@@ -39,11 +39,23 @@ export async function collectStats(
     () => getAllVideoStats(accessToken),
   );
   const totals = aggregateStats(videos);
-  const saved = await getOrFetch(`saved:${openId}`, SAVED_TTL_MS, () =>
-    getTotalSavedCount(openId, videos),
+  const savedCounts = await getOrFetch(`saved:${openId}`, SAVED_TTL_MS, () =>
+    getSavedCounts(openId, videos),
   );
 
-  const payload: StatsResponse = { user, totals, videos, saved, fetchedAt: Date.now() };
+  // Arricchisce ogni video col proprio conteggio "salvati" su una copia: la
+  // lista in cache (TTL diverso) non va mutata.
+  const videosWithSaved = savedCounts.byVideo
+    ? videos.map((v) => ({ ...v, saved_count: savedCounts.byVideo?.[v.id] ?? null }))
+    : videos;
+
+  const payload: StatsResponse = {
+    user,
+    totals,
+    videos: videosWithSaved,
+    saved: savedCounts.total,
+    fetchedAt: Date.now(),
+  };
 
   // Alimenta lo storico (best-effort: non deve mai rompere la risposta).
   try {
@@ -55,7 +67,7 @@ export async function collectStats(
       views: totals.views,
       comments: totals.comments,
       shares: totals.shares,
-      saved,
+      saved: savedCounts.total,
       videos: totals.videosCounted,
     });
   } catch {

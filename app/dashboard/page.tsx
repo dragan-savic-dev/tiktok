@@ -262,6 +262,12 @@ export default function OverviewPage() {
                       <ShareIcon className="h-3 w-3 text-tt-pink" />
                       <FlashNumber value={v.share_count ?? 0} format={formatCompact} />
                     </span>
+                    {v.saved_count != null && (
+                      <span className="flex items-center gap-1">
+                        <BookmarkIcon className="h-3 w-3 text-tt-cyan" />
+                        <FlashNumber value={v.saved_count} format={formatCompact} />
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 text-right">

@@ -1,5 +1,10 @@
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
+/** Formato di default dei contatori: intero non negativo in stile it-IT. */
+export function defaultNumberFormat(n: number): string {
+  return Math.max(0, Math.round(n)).toLocaleString("it-IT");
+}
+
 function RollingDigit({ digit }: { digit: number }) {
   return (
     <span className="inline-block h-[1em] w-[1ch] overflow-hidden">
@@ -32,9 +37,7 @@ export default function OdometerNumber({
   format?: (n: number) => string;
   className?: string;
 }) {
-  const text = format
-    ? format(value)
-    : Math.max(0, Math.round(value)).toLocaleString("it-IT");
+  const text = format ? format(value) : defaultNumberFormat(value);
   const chars = text.split("");
 
   return (

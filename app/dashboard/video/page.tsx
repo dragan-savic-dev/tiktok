@@ -6,6 +6,7 @@ import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import FlashNumber from "@/app/components/flash-number";
 import {
+  BookmarkIcon,
   CommentIcon,
   DownloadIcon,
   EyeIcon,
@@ -17,7 +18,14 @@ import { videoEngagement, videoTitle } from "@/lib/metrics";
 import { useStats } from "../stats-context";
 import { ErrorBanner, Loading } from "../shared";
 
-type SortKey = "recent" | "views" | "likes" | "comments" | "shares" | "engagement";
+type SortKey =
+  | "recent"
+  | "views"
+  | "likes"
+  | "comments"
+  | "shares"
+  | "saved"
+  | "engagement";
 
 interface Column {
   key: SortKey;
@@ -32,6 +40,7 @@ const COLUMNS: Column[] = [
   { key: "likes", label: "Mi piace", pick: (v) => v.like_count ?? 0, icon: HeartIcon, iconClass: "text-tt-pink" },
   { key: "comments", label: "Commenti", pick: (v) => v.comment_count ?? 0, icon: CommentIcon, iconClass: "text-tt-cyan" },
   { key: "shares", label: "Condiv.", pick: (v) => v.share_count ?? 0, icon: ShareIcon, iconClass: "text-tt-pink" },
+  { key: "saved", label: "Salvati", pick: (v) => v.saved_count ?? 0, icon: BookmarkIcon, iconClass: "text-tt-cyan" },
   { key: "engagement", label: "Interaz.", pick: videoEngagement, icon: TrendUpIcon, iconClass: "text-tt-cyan" },
 ];
 
@@ -51,6 +60,7 @@ function exportVideosCsv(list: VideoStats[]): void {
     "mi_piace",
     "commenti",
     "condivisioni",
+    "salvati",
     "interazioni",
     "engagement_%",
     "url",
@@ -64,6 +74,7 @@ function exportVideosCsv(list: VideoStats[]): void {
       v.like_count ?? 0,
       v.comment_count ?? 0,
       v.share_count ?? 0,
+      v.saved_count ?? "",
       eng,
       rate.toFixed(1),
       v.share_url ?? "",
@@ -84,11 +95,16 @@ function exportVideosCsv(list: VideoStats[]): void {
 /**
  * Cella numerica: cifre a rullo + lampeggio verde (su) / rosso (giù) alla
  * variazione, poi torna bianca. Nessuna freccia, come in Panoramica.
+ * null = dato non disponibile (mostra N/D).
  */
-function ValueCell({ value }: { value: number }) {
+function ValueCell({ value }: { value: number | null }) {
   return (
     <td className="px-3 py-2 text-right tabular-nums text-white">
-      <FlashNumber value={value} />
+      {value === null ? (
+        <span className="text-zinc-600">N/D</span>
+      ) : (
+        <FlashNumber value={value} />
+      )}
     </td>
   );
 }
@@ -161,7 +177,7 @@ export default function VideoPage() {
         bodyClassName="flex min-h-0 flex-col"
       >
         <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[640px] select-none text-sm">
+          <table className="w-full min-w-[720px] select-none text-sm">
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wider text-zinc-500">
                 <th className="sticky top-0 z-10 border-b border-white/5 bg-[#0c0c0c] px-4 py-2.5 font-medium sm:px-5">
@@ -228,6 +244,7 @@ export default function VideoPage() {
                     <ValueCell value={v.like_count ?? 0} />
                     <ValueCell value={v.comment_count ?? 0} />
                     <ValueCell value={v.share_count ?? 0} />
+                    <ValueCell value={v.saved_count ?? null} />
                     <ValueCell value={videoEngagement(v)} />
                   </tr>
                 );

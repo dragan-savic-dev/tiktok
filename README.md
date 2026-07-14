@@ -55,6 +55,6 @@ Per rigenerare le icone: `node scripts/gen-icons.mjs public` — sono comunque g
 
 ## Limiti (API ufficiale)
 
-- Il conteggio **"salvati"** non è esposto dalla Display API (esiste solo nella Research API per ricercatori accreditati). Viene quindi ricavato via **scraping** del JSON incorporato nelle pagine pubbliche dei video (`collectCount`, vedi `lib/tiktok-scrape.ts`), aggiornato circa ogni minuto. È fragile per natura: se TikTok cambia il markup o blocca l'IP del server (frequente sugli IP dei datacenter come quelli di Vercel), la card mostra l'ultimo valore noto o "N/D" — il resto della dashboard non ne risente.
+- Il conteggio **"salvati"** non è esposto dalla Display API (esiste solo nella Research API per ricercatori accreditati). Viene quindi ricavato via **scraping** del JSON incorporato nelle pagine pubbliche dei video (`collectCount`, vedi `lib/tiktok-scrape.ts`), sia come totale sia **per singolo video**, aggiornato circa ogni minuto. È fragile per natura: se TikTok cambia il markup o blocca l'IP del server (frequente sugli IP dei datacenter come quelli di Vercel), si mostra l'ultimo valore noto o "N/D" — il resto della dashboard non ne risente.
 - Le **views totali del profilo** non esistono come campo: le "Visualizzazioni" mostrate sono la somma delle view dei tuoi video **pubblici** (i privati non vengono restituiti dall'API).
 - Per pubblicare l'app in produzione (fuori sandbox) serve l'app review di TikTok: demo video del flusso, sito reale con privacy policy e ToS, verifica del dominio.

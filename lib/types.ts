@@ -31,6 +31,11 @@ export interface VideoStats {
   like_count: number;
   comment_count: number;
   share_count: number;
+  /**
+   * "Salvati" del video, via scraping della pagina pubblica (non esposto
+   * dalla Display API). null/assente se non disponibile.
+   */
+  saved_count?: number | null;
 }
 
 export interface VideoTotals {

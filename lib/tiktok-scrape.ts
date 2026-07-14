@@ -19,7 +19,14 @@ const CONCURRENCY = 4;
 // meglio nessun dato che farsi bloccare l'IP da TikTok.
 const MAX_SCRAPE_VIDEOS = 30;
 
-const lastKnownSaved = new Map<string, number>();
+export interface SavedCounts {
+  /** Somma dei "salvati" su tutti i video; null se mai riuscito. */
+  total: number | null;
+  /** "Salvati" per singolo video (id -> conteggio); null se non disponibile. */
+  byVideo: Record<string, number> | null;
+}
+
+const lastKnownSaved = new Map<string, SavedCounts>();
 
 async function fetchCollectCount(url: string): Promise<number | null> {
   try {
@@ -38,15 +45,16 @@ async function fetchCollectCount(url: string): Promise<number | null> {
 }
 
 /**
- * Somma i "salvati" di tutti i video. Se anche una sola pagina non è
- * leggibile ritorna l'ultimo totale noto (una somma parziale sarebbe un
+ * Legge i "salvati" di ogni video e la loro somma. Se anche una sola pagina
+ * non è leggibile ritorna l'ultimo insieme noto (un dato parziale sarebbe un
  * numero sbagliato, non un'approssimazione).
  */
-export async function getTotalSavedCount(
+export async function getSavedCounts(
   openId: string,
   videos: VideoStats[],
-): Promise<number | null> {
-  const fallback = () => lastKnownSaved.get(openId) ?? null;
+): Promise<SavedCounts> {
+  const fallback = () =>
+    lastKnownSaved.get(openId) ?? { total: null, byVideo: null };
 
   if (videos.length > MAX_SCRAPE_VIDEOS) return fallback();
 
@@ -64,7 +72,12 @@ export async function getTotalSavedCount(
 
   if (counts.some((count) => count === null)) return fallback();
 
+  const byVideo: Record<string, number> = {};
+  videos.forEach((video, i) => {
+    byVideo[video.id] = counts[i] as number;
+  });
   const total = counts.reduce<number>((sum, count) => sum + (count as number), 0);
-  lastKnownSaved.set(openId, total);
-  return total;
+  const result: SavedCounts = { total, byVideo };
+  lastKnownSaved.set(openId, result);
+  return result;
 }
