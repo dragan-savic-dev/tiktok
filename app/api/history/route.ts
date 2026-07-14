@@ -15,7 +15,9 @@ export async function GET(request: NextRequest) {
   const days = Number.isFinite(raw)
     ? Math.min(MAX_DAYS, Math.max(1, Math.trunc(raw)))
     : DEFAULT_DAYS;
+  const granularity =
+    request.nextUrl.searchParams.get("granularity") === "hour" ? "hour" : "day";
 
-  const history = await getHistory(openId, days);
+  const history = await getHistory(openId, days, granularity);
   return NextResponse.json(history);
 }

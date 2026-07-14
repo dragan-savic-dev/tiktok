@@ -7,6 +7,8 @@ export interface TikTokUser {
   display_name?: string;
   username?: string;
   is_verified?: boolean;
+  /** Bio del profilo (vuota se non impostata). */
+  bio_description?: string;
   profile_deep_link?: string;
   follower_count?: number;
   following_count?: number;
@@ -27,6 +29,12 @@ export interface VideoStats {
   cover_image_url?: string;
   /** Durata del video in secondi. */
   duration?: number;
+  /** Altezza del video in pixel (per il ratio originale della copertina). */
+  height?: number;
+  /** Larghezza del video in pixel. */
+  width?: number;
+  /** URL embed ufficiale tiktok.com per il player incorporato. */
+  embed_link?: string;
   view_count: number;
   like_count: number;
   comment_count: number;
@@ -72,9 +80,12 @@ export interface HistorySnapshot {
   videos: number;
 }
 
-/** Un punto giornaliero: l'ultimo valore noto di quel giorno. */
+/** Un punto della serie storica: l'ultimo valore noto del bucket. */
 export interface DailyPoint extends HistorySnapshot {
-  /** Giorno in formato YYYY-MM-DD (fuso orario del server). */
+  /**
+   * Bucket in formato YYYY-MM-DD (granularità giornaliera) oppure
+   * "YYYY-MM-DD HH" (granularità oraria), nel fuso orario del server.
+   */
   day: string;
 }
 
@@ -90,6 +101,9 @@ export interface HistoryResponse {
     followers: HistoryDelta;
     views: HistoryDelta;
     likes: HistoryDelta;
+    comments: HistoryDelta;
+    shares: HistoryDelta;
+    saved: HistoryDelta;
   };
   /** Epoch ms dello snapshot più vecchio disponibile (null se store vuoto). */
   firstAt: number | null;

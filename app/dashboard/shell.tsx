@@ -71,6 +71,11 @@ function SidebarProfile() {
         {user?.username && (
           <span className="text-xs text-zinc-500">@{user.username}</span>
         )}
+        {user?.bio_description && (
+          <p className="mt-1 line-clamp-2 max-w-[13rem] text-xs text-zinc-600">
+            {user.bio_description}
+          </p>
+        )}
       </div>
     </div>
   );

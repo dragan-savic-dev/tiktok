@@ -1,13 +1,15 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
 import {
   BookmarkIcon,
+  CloseIcon,
   CommentIcon,
   EyeIcon,
   HeartIcon,
@@ -22,6 +24,41 @@ import {
 } from "@/lib/metrics";
 import { useStats } from "../../stats-context";
 import { CHART_COLORS, ErrorBanner, Loading } from "../../shared";
+
+const REFRESH_MS = 5000;
+
+/**
+ * Contatori freschi del singolo video via /api/video/[id] (video/query, TTL
+ * più corto della lista completa). Best-effort: se fallisce si resta sui dati
+ * del contesto condiviso.
+ */
+function useFreshVideo(id: string): VideoStats | null {
+  const [fresh, setFresh] = useState<VideoStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/video/${id}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (!cancelled && body?.video) setFresh(body.video as VideoStats);
+      } catch {
+        // best-effort
+      }
+    };
+    load();
+    const timer = setInterval(() => {
+      if (!document.hidden) load();
+    }, REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [id]);
+
+  return fresh;
+}
 
 function formatDate(t?: number): string | null {
   if (!t) return null;
@@ -93,6 +130,8 @@ export default function VideoDetailPage() {
   const params = useParams();
   const id = String(params.id);
   const { stats, error } = useStats();
+  const fresh = useFreshVideo(id);
+  const [playing, setPlaying] = useState(false);
 
   if (!stats) {
     return (
@@ -104,7 +143,10 @@ export default function VideoDetailPage() {
   }
 
   const { videos, totals, saved: accountSaved } = stats;
-  const video = videos.find((v) => v.id === id);
+  const baseVideo = videos.find((v) => v.id === id);
+  // Il dato fresco (video/query) sovrascrive quello della lista; i campi che
+  // conosce solo la lista (es. saved_count dallo scraping) restano.
+  const video = baseVideo && fresh ? { ...baseVideo, ...fresh } : baseVideo;
 
   if (!video) {
     return (
@@ -127,6 +169,11 @@ export default function VideoDetailPage() {
   // "Salvati" del video via scraping: può mancare (N/D).
   const saved = video.saved_count ?? null;
   const rate = videoEngagementRate(video);
+
+  // Ratio originale del video dall'API (fallback: dimensioni naturali della
+  // copertina) e URL del player incorporato ufficiale.
+  const ratio = video.width && video.height ? `${video.width} / ${video.height}` : null;
+  const embedUrl = video.embed_link ?? `https://www.tiktok.com/embed/v2/${video.id}`;
 
   // Medie del profilo per il confronto.
   const count = Math.max(1, totals.videosCounted);
@@ -172,24 +219,59 @@ export default function VideoDetailPage() {
 
       {/* Intestazione: copertina + meta */}
       <Card bodyClassName="flex flex-col gap-4 p-4 sm:flex-row sm:gap-5 sm:p-5">
-        {/* Copertina alla proporzione originale: niente ritaglio, l'altezza segue l'immagine. */}
-        <div className="relative w-32 shrink-0 self-center overflow-hidden rounded-xl bg-zinc-900 sm:w-36 sm:self-start">
-          {video.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- copertina da CDN TikTok con URL a scadenza
-            <img
-              src={video.cover_image_url}
-              alt={videoTitle(video)}
-              className="h-auto w-full"
-            />
+        {/* Copertina alla proporzione originale del video (width/height dall'API,
+            fallback sulle dimensioni naturali dell'immagine); al click si apre
+            il player TikTok incorporato. */}
+        <div
+          className={`relative shrink-0 self-center overflow-hidden rounded-xl bg-zinc-900 transition-all duration-300 sm:self-start ${
+            playing ? "w-full max-w-xs sm:w-72" : "w-32 sm:w-36"
+          }`}
+          style={{ aspectRatio: ratio ?? (playing ? "9 / 16" : undefined) }}
+        >
+          {playing ? (
+            <>
+              <iframe
+                src={embedUrl}
+                title={videoTitle(video)}
+                className="h-full w-full"
+                allow="autoplay; encrypted-media; fullscreen"
+                allowFullScreen
+              />
+              <button
+                onClick={() => setPlaying(false)}
+                aria-label="Chiudi il player"
+                className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-white transition-colors hover:bg-black"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </button>
+            </>
           ) : (
-            <div className="grid aspect-[9/16] w-full place-items-center text-zinc-700">
-              <PlayIcon className="h-10 w-10" />
-            </div>
-          )}
-          {duration && (
-            <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">
-              {duration}
-            </span>
+            <>
+              {video.cover_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- copertina da CDN TikTok con URL a scadenza
+                <img
+                  src={video.cover_image_url}
+                  alt={videoTitle(video)}
+                  className={ratio ? "h-full w-full object-cover" : "h-auto w-full"}
+                />
+              ) : (
+                <div className="grid aspect-[9/16] w-full place-items-center text-zinc-700">
+                  <PlayIcon className="h-10 w-10" />
+                </div>
+              )}
+              <button
+                onClick={() => setPlaying(true)}
+                aria-label="Riproduci il video"
+                className="group absolute inset-0 grid place-items-center transition-colors hover:bg-black/30"
+              >
+                <PlayIcon className="h-10 w-10 text-white opacity-0 drop-shadow-lg transition-opacity group-hover:opacity-100" />
+              </button>
+              {duration && (
+                <span className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">
+                  {duration}
+                </span>
+              )}
+            </>
           )}
         </div>
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">

@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Cell, Pie, PieChart } from "recharts";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
+import ChartTooltip from "./chart-tooltip";
 
 export interface DonutSegment {
   label: string;
@@ -53,6 +54,7 @@ export default function DonutChart({
             <Cell key={s.label} fill={s.color} />
           ))}
         </Pie>
+        <Tooltip content={<ChartTooltip />} />
       </PieChart>
       {center && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">

@@ -5,6 +5,7 @@ const TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
 const REVOKE_URL = "https://open.tiktokapis.com/v2/oauth/revoke/";
 const USER_INFO_URL = "https://open.tiktokapis.com/v2/user/info/";
 const VIDEO_LIST_URL = "https://open.tiktokapis.com/v2/video/list/";
+const VIDEO_QUERY_URL = "https://open.tiktokapis.com/v2/video/query/";
 
 export const OAUTH_SCOPES =
   "user.info.basic,user.info.profile,user.info.stats,video.list";
@@ -16,6 +17,7 @@ const USER_FIELDS = [
   "display_name",
   "username",
   "is_verified",
+  "bio_description",
   "profile_deep_link",
   "follower_count",
   "following_count",
@@ -31,6 +33,9 @@ const VIDEO_FIELDS = [
   "create_time",
   "cover_image_url",
   "duration",
+  "height",
+  "width",
+  "embed_link",
   "view_count",
   "like_count",
   "comment_count",
@@ -229,6 +234,29 @@ export async function getAllVideoStats(accessToken: string): Promise<VideoStats[
   }
 
   return videos;
+}
+
+/**
+ * Statistiche di video specifici via /v2/video/query/ (max 20 id per
+ * richiesta). Più economico di ripaginare tutta la lista quando serve
+ * aggiornare un solo video, e rinfresca anche il TTL delle cover (6h).
+ */
+export async function queryVideoStats(
+  accessToken: string,
+  videoIds: string[],
+): Promise<VideoStats[]> {
+  const res = await fetch(`${VIDEO_QUERY_URL}?fields=${VIDEO_FIELDS}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ filters: { video_ids: videoIds.slice(0, 20) } }),
+    cache: "no-store",
+  });
+  const body: DisplayEnvelope<{ videos?: VideoStats[] }> = await res.json();
+  assertDisplayOk(res, body);
+  return body.data?.videos ?? [];
 }
 
 export function aggregateStats(videos: VideoStats[]): VideoTotals {

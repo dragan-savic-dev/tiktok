@@ -1,23 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { HistoryDelta, HistoryResponse, DailyPoint } from "@/lib/types";
+import type { DailyPoint, HistoryDelta, HistoryResponse, VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
+import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import FlashNumber from "@/app/components/flash-number";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
+import { formatCompact } from "@/lib/metrics";
+import { useStats } from "../stats-context";
 import { CHART_COLORS, Loading } from "../shared";
 
 const RANGES = [
   { days: 7, label: "7 giorni" },
   { days: 30, label: "30 giorni" },
   { days: 90, label: "90 giorni" },
+  { days: 120, label: "120 giorni" },
 ];
 
-/** "2026-07-13" -> "13/07" */
-function dayLabel(day: string): string {
-  const [, m, d] = day.split("-");
-  return `${d}/${m}`;
+/** "2026-07-13" -> "13/07"; "2026-07-13 14" (bucket orario) -> "13/07 14:00" */
+function bucketLabel(day: string): string {
+  const [date, hour] = day.split(" ");
+  const [, m, d] = date.split("-");
+  return hour ? `${d}/${m} ${hour}:00` : `${d}/${m}`;
 }
 
 function formatSigned(n: number): string {
@@ -58,14 +63,59 @@ function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
   );
 }
 
-function series(daily: DailyPoint[], pick: (p: DailyPoint) => number): LinePoint[] {
-  return daily.map((p) => ({ label: dayLabel(p.day), value: pick(p) }));
+/** Serie del totale, saltando i bucket senza valore (es. salvati N/D). */
+function seriesTotal(
+  daily: DailyPoint[],
+  pick: (p: DailyPoint) => number | null,
+): LinePoint[] {
+  return daily.flatMap((p) => {
+    const v = pick(p);
+    return v === null ? [] : [{ label: bucketLabel(p.day), value: v }];
+  });
 }
 
-/** Scarica lo storico giornaliero come file CSV. */
+/** Serie della variazione: differenza tra bucket consecutivi. */
+function seriesDelta(
+  daily: DailyPoint[],
+  pick: (p: DailyPoint) => number | null,
+): BarDatum[] {
+  const points = seriesTotal(daily, pick);
+  return points.slice(1).map((p, i) => ({ label: p.label, value: p.value - points[i].value }));
+}
+
+/** Etichette dei bucket in cui è stato pubblicato un video (per i marcatori). */
+function publicationMarkers(
+  videos: VideoStats[],
+  hourly: boolean,
+  available: Set<string>,
+): string[] {
+  const labels = new Set<string>();
+  for (const v of videos) {
+    if (!v.create_time) continue;
+    const d = new Date(v.create_time * 1000);
+    const key = hourly
+      ? `${d.toLocaleDateString("sv-SE")} ${String(d.getHours()).padStart(2, "0")}`
+      : d.toLocaleDateString("sv-SE");
+    const label = bucketLabel(key);
+    if (available.has(label)) labels.add(label);
+  }
+  return [...labels];
+}
+
+/** Prossimo traguardo "tondo" di follower sopra il valore attuale. */
+function nextMilestone(n: number): number {
+  const steps = [
+    100, 250, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000,
+    500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000,
+  ];
+  for (const s of steps) if (n < s) return s;
+  return Math.ceil((n + 1) / 10_000_000) * 10_000_000;
+}
+
+/** Scarica lo storico come file CSV (alla granularità mostrata). */
 function exportCsv(daily: DailyPoint[]): void {
   const header = [
-    "giorno",
+    "bucket",
     "seguiti",
     "follower",
     "mi_piace",
@@ -91,15 +141,23 @@ function exportCsv(daily: DailyPoint[]): void {
 
 export default function GrowthPage() {
   const [days, setDays] = useState(30);
+  const [mode, setMode] = useState<"total" | "delta">("total");
   const [history, setHistory] = useState<HistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { stats } = useStats();
+
+  // Su 7 giorni gli snapshot al minuto permettono la granularità oraria.
+  const hourly = days === 7;
 
   useEffect(() => {
     let cancelled = false;
+    const granularity = days === 7 ? "hour" : "day";
     const load = async () => {
       try {
-        const res = await fetch(`/api/history?days=${days}`, { cache: "no-store" });
+        const res = await fetch(`/api/history?days=${days}&granularity=${granularity}`, {
+          cache: "no-store",
+        });
         if (res.status === 401) {
           window.location.href = "/?error=session_expired";
           return;
@@ -131,15 +189,51 @@ export default function GrowthPage() {
 
   const daily = history?.daily ?? [];
   const enoughData = daily.length >= 2;
+  const deltaMode = mode === "delta";
+
+  const savedSeries = seriesTotal(daily, (p) => p.saved);
+  const availableLabels = new Set(daily.map((p) => bucketLabel(p.day)));
+  const markers = publicationMarkers(stats?.videos ?? [], hourly, availableLabels);
+
+  // Proiezione del prossimo traguardo follower al ritmo degli ultimi 7 giorni.
+  const followers = stats?.user.follower_count ?? null;
+  const weekGain = history?.deltas.followers.week ?? null;
+  const milestone =
+    followers !== null && weekGain !== null && weekGain > 0
+      ? {
+          target: nextMilestone(followers),
+          perDay: weekGain / 7,
+          daysLeft: Math.max(
+            1,
+            Math.ceil((nextMilestone(followers) - followers) / (weekGain / 7)),
+          ),
+        }
+      : null;
+
+  /** Un grafico che segue il toggle Totale/Variazione. */
+  const chart = (
+    pick: (p: DailyPoint) => number | null,
+    color: string,
+    withMarkers = false,
+  ) =>
+    deltaMode ? (
+      <BarChart bars={seriesDelta(daily, pick)} color={color} formatValue={formatSigned} />
+    ) : (
+      <LineChart
+        data={seriesTotal(daily, pick)}
+        color={color}
+        markers={withMarkers ? markers : []}
+      />
+    );
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Selettore intervallo */}
+      {/* Selettore intervallo + modalità */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-500">
           Andamento reale nel tempo, dai dati salvati mentre usi l’app.
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
             {RANGES.map((r) => (
               <button
@@ -152,6 +246,26 @@ export default function GrowthPage() {
                 }`}
               >
                 {r.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+            {(
+              [
+                { key: "total", label: "Totale" },
+                { key: "delta", label: hourly ? "Variazione/ora" : "Variazione/giorno" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setMode(m.key)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  mode === m.key
+                    ? "bg-tt-cyan/15 text-white"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                {m.label}
               </button>
             ))}
           </div>
@@ -173,28 +287,65 @@ export default function GrowthPage() {
         </p>
       )}
 
-      {/* Delta oggi / 7 giorni */}
+      {/* Delta oggi / 7 giorni su tutte le metriche */}
       {history && (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <DeltaStat label="Follower" delta={history.deltas.followers} />
           <DeltaStat label="Visualizzazioni" delta={history.deltas.views} />
           <DeltaStat label="Mi piace" delta={history.deltas.likes} />
+          <DeltaStat label="Commenti" delta={history.deltas.comments} />
+          <DeltaStat label="Condivisioni" delta={history.deltas.shares} />
+          <DeltaStat label="Salvati" delta={history.deltas.saved} />
+        </div>
+      )}
+
+      {/* Proiezione prossimo traguardo follower */}
+      {milestone && followers !== null && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400">
+          <TrendUpIcon className="h-4 w-4 shrink-0 text-tt-cyan" />
+          <span>
+            Al ritmo degli ultimi 7 giorni (
+            <span className="font-semibold text-emerald-400">
+              +<FlashNumber value={Math.round(milestone.perDay)} />
+            </span>
+            /giorno) raggiungi{" "}
+            <span className="font-semibold text-white">
+              <FlashNumber value={milestone.target} format={formatCompact} />
+            </span>{" "}
+            follower tra circa{" "}
+            <span className="font-semibold text-white">
+              <FlashNumber value={milestone.daysLeft} />
+            </span>{" "}
+            giorni.
+          </span>
         </div>
       )}
 
       {enoughData ? (
         <>
-          <Card title="Crescita follower">
-            <LineChart data={series(daily, (p) => p.followers)} color={CHART_COLORS.pink} />
+          <Card title={deltaMode ? "Follower guadagnati" : "Crescita follower"}>
+            {chart((p) => p.followers, CHART_COLORS.pink)}
           </Card>
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card title="Visualizzazioni nel tempo">
-              <LineChart data={series(daily, (p) => p.views)} color={CHART_COLORS.cyan} />
+            <Card
+              title="Visualizzazioni nel tempo"
+              action={
+                !deltaMode && markers.length > 0 ? (
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+                    <span className="text-tt-pink">┆</span> pubblicazioni
+                  </span>
+                ) : undefined
+              }
+            >
+              {chart((p) => p.views, CHART_COLORS.cyan, true)}
             </Card>
-            <Card title="Mi piace nel tempo">
-              <LineChart data={series(daily, (p) => p.likes)} color={CHART_COLORS.violet} />
-            </Card>
+            <Card title="Mi piace nel tempo">{chart((p) => p.likes, CHART_COLORS.violet)}</Card>
           </div>
+          {savedSeries.length >= 2 && (
+            <Card title="Salvati nel tempo">
+              {chart((p) => p.saved, CHART_COLORS.amber)}
+            </Card>
+          )}
         </>
       ) : (
         <Card>

@@ -90,49 +90,63 @@ function dayKey(t: number): string {
   return new Date(t).toLocaleDateString("sv-SE"); // sv-SE => 2026-07-13
 }
 
-/** Ultimo snapshot di ogni giorno, in ordine cronologico. */
-function toDailySeries(snapshots: HistorySnapshot[]): DailyPoint[] {
-  const byDay = new Map<string, HistorySnapshot>();
+/** Chiave ora "YYYY-MM-DD HH" nel fuso del server (bucket orari). */
+function hourKey(t: number): string {
+  return `${dayKey(t)} ${String(new Date(t).getHours()).padStart(2, "0")}`;
+}
+
+export type HistoryGranularity = "day" | "hour";
+
+/** Ultimo snapshot di ogni bucket (giorno oppure ora), in ordine cronologico. */
+function toSeries(
+  snapshots: HistorySnapshot[],
+  granularity: HistoryGranularity,
+): DailyPoint[] {
+  const keyOf = granularity === "hour" ? hourKey : dayKey;
+  const byBucket = new Map<string, HistorySnapshot>();
   for (const s of snapshots) {
-    byDay.set(dayKey(s.t), s); // gli snapshot sono ordinati: vince l'ultimo
+    byBucket.set(keyOf(s.t), s); // gli snapshot sono ordinati: vince l'ultimo
   }
-  return [...byDay.entries()]
+  return [...byBucket.entries()]
     .map(([day, s]) => ({ ...s, day }))
     .sort((a, b) => a.day.localeCompare(b.day));
 }
 
-/** Ultimo valore con t <= target, oppure null se non esiste. */
+/** Ultimo valore non-null con t <= target, oppure null se non esiste. */
 function valueBefore(
   snapshots: HistorySnapshot[],
   target: number,
-  pick: (s: HistorySnapshot) => number,
+  pick: (s: HistorySnapshot) => number | null,
 ): number | null {
   let result: number | null = null;
   for (const s of snapshots) {
-    if (s.t <= target) result = pick(s);
-    else break;
+    if (s.t > target) break;
+    const v = pick(s);
+    if (v !== null) result = v;
   }
   return result;
 }
 
 function computeDelta(
   snapshots: HistorySnapshot[],
-  pick: (s: HistorySnapshot) => number,
+  pick: (s: HistorySnapshot) => number | null,
   now: number,
 ): HistoryDelta {
-  if (snapshots.length === 0) return { today: null, week: null };
-  const latest = pick(snapshots[snapshots.length - 1]);
+  // Ignora gli snapshot senza valore (es. "salvati" non disponibili).
+  const valued = snapshots.filter((s) => pick(s) !== null);
+  if (valued.length === 0) return { today: null, week: null };
+  const latest = pick(valued[valued.length - 1]) as number;
 
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   // Valore "a mezzanotte": ultimo di ieri, o il primo di oggi se l'app è nuova.
-  let todayBase = valueBefore(snapshots, startOfToday.getTime(), pick);
-  if (todayBase === null) todayBase = pick(snapshots[0]);
+  let todayBase = valueBefore(valued, startOfToday.getTime(), pick);
+  if (todayBase === null) todayBase = pick(valued[0]);
 
-  const weekBase = valueBefore(snapshots, now - 7 * DAY_MS, pick);
+  const weekBase = valueBefore(valued, now - 7 * DAY_MS, pick);
 
   return {
-    today: latest - todayBase,
+    today: todayBase === null ? null : latest - todayBase,
     week: weekBase === null ? null : latest - weekBase,
   };
 }
@@ -141,6 +155,7 @@ function computeDelta(
 export async function getHistory(
   openId: string,
   days: number,
+  granularity: HistoryGranularity = "day",
 ): Promise<HistoryResponse> {
   const all = await readSnapshots(openId);
   const now = Date.now();
@@ -148,11 +163,14 @@ export async function getHistory(
   const windowed = all.filter((s) => s.t >= cutoff);
 
   return {
-    daily: toDailySeries(windowed),
+    daily: toSeries(windowed, granularity),
     deltas: {
       followers: computeDelta(all, (s) => s.followers, now),
       views: computeDelta(all, (s) => s.views, now),
       likes: computeDelta(all, (s) => s.likes, now),
+      comments: computeDelta(all, (s) => s.comments, now),
+      shares: computeDelta(all, (s) => s.shares, now),
+      saved: computeDelta(all, (s) => s.saved, now),
     },
     firstAt: all[0]?.t ?? null,
     count: all.length,
