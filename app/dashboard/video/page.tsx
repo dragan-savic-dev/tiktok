@@ -6,6 +6,7 @@ import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import {
   CommentIcon,
+  DownloadIcon,
   EyeIcon,
   HeartIcon,
   ShareIcon,
@@ -38,6 +39,50 @@ const PAGE_SIZE = 20;
 
 function fmt(n: number): string {
   return n.toLocaleString("it-IT");
+}
+
+/** Cella CSV: quota se contiene virgole, virgolette o a-capo. */
+function csvCell(value: string | number): string {
+  const s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Scarica l'elenco video (nell'ordine attuale) come CSV. */
+function exportVideosCsv(list: VideoStats[]): void {
+  const header = [
+    "titolo",
+    "visualizzazioni",
+    "mi_piace",
+    "commenti",
+    "condivisioni",
+    "interazioni",
+    "engagement_%",
+    "url",
+  ];
+  const rows = list.map((v) => {
+    const eng = videoEngagement(v);
+    const rate = v.view_count ? (eng / v.view_count) * 100 : 0;
+    return [
+      videoTitle(v),
+      v.view_count ?? 0,
+      v.like_count ?? 0,
+      v.comment_count ?? 0,
+      v.share_count ?? 0,
+      eng,
+      rate.toFixed(1),
+      v.share_url ?? "",
+    ]
+      .map(csvCell)
+      .join(",");
+  });
+  const csv = [header.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tiktok-video-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -104,6 +149,17 @@ export default function VideoPage() {
 
       <Card
         title={`Tutti i video (${fmt(videos.length)})`}
+        action={
+          <button
+            onClick={() => exportVideosCsv(sorted)}
+            disabled={sorted.length === 0}
+            title="Esporta l’elenco video in CSV"
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-tt-cyan/60 hover:text-white disabled:opacity-40"
+          >
+            <DownloadIcon className="h-3.5 w-3.5" />
+            CSV
+          </button>
+        }
         className="min-h-0 flex-1"
         bodyClassName="flex min-h-0 flex-col"
       >
