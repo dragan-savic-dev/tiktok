@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { appUrl, refreshAccessToken, type TokenResponse } from "./tiktok";
+import { saveUserToken } from "./users";
 
 const ACCESS_COOKIE = "tt_access_token";
 const REFRESH_COOKIE = "tt_refresh_token";
@@ -37,6 +38,13 @@ export async function setAuthCookies(token: TokenResponse): Promise<void> {
     cookieOptions(token.refresh_expires_in),
   );
   store.set(OPEN_ID_COOKIE, token.open_id, cookieOptions(token.refresh_expires_in));
+
+  // Persiste l'access token per la raccolta in background (best-effort).
+  void saveUserToken(
+    token.open_id,
+    token.access_token,
+    Date.now() + token.expires_in * 1000,
+  );
 }
 
 export async function clearAuthCookies(): Promise<void> {

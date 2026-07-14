@@ -156,7 +156,7 @@ export default function OverviewPage() {
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400">
               Totali su tutti i video
             </h3>
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
               <StatCard
                 label="Visualizzazioni"
                 value={totals.views}
@@ -167,10 +167,12 @@ export default function OverviewPage() {
               />
               {/* Mi piace su mobile raggruppato coi totali; da lg torna tra i KPI. */}
               <div className="lg:hidden">
-                <HeroStat
+                <StatCard
                   label="Mi piace"
                   value={user.likes_count ?? 0}
                   delta={delta((s) => s.user.likes_count)}
+                  icon={<HeartIcon className="h-4 w-4" />}
+                  accent="pink"
                 />
               </div>
               <StatCard

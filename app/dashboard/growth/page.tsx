@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { HistoryDelta, HistoryResponse, DailyPoint } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
-import { TrendUpIcon } from "@/app/components/icons";
+import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
 import { CHART_COLORS, Loading } from "../shared";
 
 const RANGES = [
@@ -51,6 +51,33 @@ function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
 
 function series(daily: DailyPoint[], pick: (p: DailyPoint) => number): LinePoint[] {
   return daily.map((p) => ({ label: dayLabel(p.day), value: pick(p) }));
+}
+
+/** Scarica lo storico giornaliero come file CSV. */
+function exportCsv(daily: DailyPoint[]): void {
+  const header = [
+    "giorno",
+    "seguiti",
+    "follower",
+    "mi_piace",
+    "visualizzazioni",
+    "commenti",
+    "condivisioni",
+    "salvati",
+  ];
+  const rows = daily.map((p) =>
+    [p.day, p.following, p.followers, p.likes, p.views, p.comments, p.shares, p.saved ?? ""].join(
+      ",",
+    ),
+  );
+  const csv = [header.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tiktok-storico-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function GrowthPage() {
@@ -103,20 +130,31 @@ export default function GrowthPage() {
         <p className="text-sm text-zinc-500">
           Andamento reale nel tempo, dai dati salvati mentre usi l’app.
         </p>
-        <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
-          {RANGES.map((r) => (
-            <button
-              key={r.days}
-              onClick={() => setDays(r.days)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                days === r.days
-                  ? "bg-tt-pink/20 text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+            {RANGES.map((r) => (
+              <button
+                key={r.days}
+                onClick={() => setDays(r.days)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  days === r.days
+                    ? "bg-tt-pink/20 text-white"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => exportCsv(daily)}
+            disabled={daily.length === 0}
+            title="Esporta lo storico in CSV"
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-tt-cyan/60 hover:text-white disabled:opacity-40 disabled:hover:border-white/10 disabled:hover:text-zinc-300"
+          >
+            <DownloadIcon className="h-3.5 w-3.5" />
+            CSV
+          </button>
         </div>
       </div>
 

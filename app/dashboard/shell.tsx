@@ -144,10 +144,18 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
   const active = NAV.find((item) => isActive(pathname, item));
   const title = active?.label ?? "Dashboard";
 
+  // Solo la pagina Video usa lo shell ad altezza fissa (tabella scrollabile
+  // internamente). Le altre scrollano normalmente come documento.
+  const fixedHeight = pathname.startsWith("/dashboard/video");
+
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#050505]">
+    <div className={`flex bg-[#050505] ${fixedHeight ? "h-dvh overflow-hidden" : "min-h-dvh"}`}>
       {/* Sidebar fissa su desktop */}
-      <aside className="hidden h-full w-64 shrink-0 border-r border-white/5 bg-[#0a0a0a] md:block">
+      <aside
+        className={`hidden w-64 shrink-0 border-r border-white/5 bg-[#0a0a0a] md:block ${
+          fixedHeight ? "h-full" : "sticky top-0 h-dvh"
+        }`}
+      >
         <SidebarContent />
       </aside>
 
@@ -180,9 +188,13 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <div className="flex h-full min-w-0 flex-1 flex-col">
+      <div className={`flex min-w-0 flex-1 flex-col ${fixedHeight ? "h-full" : ""}`}>
         {/* Header */}
-        <header className="z-30 shrink-0 border-b border-white/5 bg-[#050505]/80 backdrop-blur-md">
+        <header
+          className={`z-30 shrink-0 border-b border-white/5 bg-[#050505]/80 backdrop-blur-md ${
+            fixedHeight ? "" : "sticky top-0"
+          }`}
+        >
           <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
             <div className="flex items-center gap-3">
               <button
@@ -201,7 +213,11 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
+        <main
+          className={`min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6 ${
+            fixedHeight ? "min-h-0 overflow-y-auto" : ""
+          }`}
+        >
           {children}
         </main>
       </div>
