@@ -12,6 +12,7 @@ import {
 import { Card } from "@/app/components/card";
 import DeltaBadge from "@/app/components/delta-badge";
 import DonutChart from "@/app/components/donut-chart";
+import FlashNumber from "@/app/components/flash-number";
 import OdometerNumber from "@/app/components/odometer-number";
 import StatCard from "@/app/components/stat-card";
 import { useValueFlash } from "@/app/components/use-value-flash";
@@ -172,7 +173,7 @@ export default function OverviewPage() {
                   value={user.likes_count ?? 0}
                   delta={delta((s) => s.user.likes_count)}
                   icon={<HeartIcon className="h-4 w-4" />}
-                  accent="pink"
+                  accent="cyan"
                 />
               </div>
               <StatCard
@@ -180,7 +181,7 @@ export default function OverviewPage() {
                 value={totals.comments}
                 delta={delta((s) => s.totals.comments)}
                 icon={<CommentIcon className="h-4 w-4" />}
-                accent="pink"
+                accent="cyan"
               />
               <StatCard
                 label="Condivisioni"
@@ -194,7 +195,7 @@ export default function OverviewPage() {
                 value={saved}
                 delta={delta((s) => s.saved ?? undefined)}
                 icon={<BookmarkIcon className="h-4 w-4" />}
-                accent="pink"
+                accent="cyan"
               />
             </div>
           </div>

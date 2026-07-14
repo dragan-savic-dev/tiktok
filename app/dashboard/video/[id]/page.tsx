@@ -1,9 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Card, LegendItem } from "@/app/components/card";
+import { Card } from "@/app/components/card";
 import DonutChart from "@/app/components/donut-chart";
 import {
   CommentIcon,
@@ -12,6 +12,7 @@ import {
   PlayIcon,
   ShareIcon,
 } from "@/app/components/icons";
+import { useValueFlash } from "@/app/components/use-value-flash";
 import {
   formatDuration,
   formatMultiplier,
@@ -48,15 +49,22 @@ function MetricTile({
   icon: ReactNode;
   accent: string;
 }) {
+  const dir = useValueFlash(value);
+  const flash =
+    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-medium uppercase tracking-widest text-zinc-400 sm:text-xs">
+        <span className="truncate text-[10px] font-medium uppercase tracking-widest text-zinc-400 sm:text-xs">
           {label}
         </span>
-        <span style={{ color: accent }}>{icon}</span>
+        <span className="shrink-0" style={{ color: accent }}>
+          {icon}
+        </span>
       </div>
-      <span className="text-xl font-semibold text-white sm:text-2xl">{fmt(value)}</span>
+      <span className={`text-xl font-semibold transition-colors duration-300 sm:text-2xl ${flash}`}>
+        {fmt(value)}
+      </span>
     </div>
   );
 }
@@ -73,14 +81,21 @@ function CompareRow({
 }) {
   const ratio = average ? value / average : 0;
   const tone = ratio >= 1 ? "text-emerald-400" : "text-tt-pink";
+  const dir = useValueFlash(value);
+  const flash =
+    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 gap-y-1 text-sm">
-      <span className="text-zinc-400">{label}</span>
-      <span className="w-20 text-right font-semibold tabular-nums text-white">{fmt(value)}</span>
-      <span className="w-20 text-right tabular-nums text-zinc-500">
+    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 gap-y-1 text-sm sm:gap-x-3">
+      <span className="truncate text-zinc-400">{label}</span>
+      <span
+        className={`w-16 text-right font-semibold tabular-nums transition-colors duration-300 sm:w-20 ${flash}`}
+      >
+        {fmt(value)}
+      </span>
+      <span className="w-16 text-right tabular-nums text-zinc-500 sm:w-20">
         {fmt(Math.round(average))}
       </span>
-      <span className={`w-14 text-right font-semibold tabular-nums ${tone}`}>
+      <span className={`w-12 text-right font-semibold tabular-nums sm:w-14 ${tone}`}>
         {formatMultiplier(value, average)}
       </span>
     </div>
@@ -165,8 +180,8 @@ export default function VideoDetailPage() {
       </Link>
 
       {/* Intestazione: copertina + meta */}
-      <Card bodyClassName="flex flex-col gap-4 p-4 sm:flex-row sm:p-5">
-        <div className="relative aspect-[9/16] w-full shrink-0 overflow-hidden rounded-xl bg-zinc-900 sm:h-56 sm:w-auto">
+      <Card bodyClassName="flex flex-col gap-4 p-4 sm:flex-row sm:gap-5 sm:p-5">
+        <div className="relative aspect-[9/16] w-32 shrink-0 self-center overflow-hidden rounded-xl bg-zinc-900 sm:w-36 sm:self-start">
           {video.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- copertina da CDN TikTok con URL a scadenza
             <img
@@ -185,21 +200,22 @@ export default function VideoDetailPage() {
             </span>
           )}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">
           <h1 className="text-lg font-bold text-white sm:text-xl">{videoTitle(video)}</h1>
           {video.video_description && (
-            <p className="line-clamp-3 text-sm text-zinc-400">{video.video_description}</p>
+            <p className="line-clamp-2 text-sm text-zinc-400">{video.video_description}</p>
           )}
-          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
             {date && <span>Pubblicato il {date}</span>}
             <span>#{rankViews} per visualizzazioni</span>
+            {duration && <span>Durata {duration}</span>}
           </div>
           {video.share_url && (
             <a
               href={video.share_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex w-fit items-center gap-2 rounded-full bg-tt-pink px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-105"
+              className="mt-1 inline-flex w-fit items-center gap-2 rounded-full bg-tt-pink px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-105"
             >
               <PlayIcon className="h-4 w-4" />
               Apri su TikTok
@@ -253,19 +269,22 @@ export default function VideoDetailPage() {
             />
             <div className="grid w-full grid-cols-[1fr_auto_auto] items-center gap-x-3 gap-y-2 text-sm">
               {interactions.map((i) => (
-                <LegendItem
-                  key={i.label}
-                  color={i.color}
-                  label={i.label}
-                  value={
-                    <span className="flex items-center gap-2">
-                      <span className="text-zinc-500">
-                        {formatPercent(i.value / interactionsTotal, 0)}
-                      </span>
-                      {fmt(i.value)}
-                    </span>
-                  }
-                />
+                <Fragment key={i.label}>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: i.color }}
+                      aria-hidden="true"
+                    />
+                    <span className="text-zinc-400">{i.label}</span>
+                  </div>
+                  <span className="w-10 text-right tabular-nums text-zinc-500">
+                    {formatPercent(i.value / interactionsTotal, 0)}
+                  </span>
+                  <span className="w-20 text-right font-semibold tabular-nums text-white">
+                    {fmt(i.value)}
+                  </span>
+                </Fragment>
               ))}
             </div>
           </div>
@@ -284,25 +303,25 @@ export default function VideoDetailPage() {
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] uppercase tracking-wider text-zinc-500">
                 <span />
-                <span className="w-20 text-right">Questo</span>
-                <span className="w-20 text-right">Media</span>
-                <span className="w-14 text-right">vs</span>
+                <span className="w-16 text-right sm:w-20">Questo</span>
+                <span className="w-16 text-right sm:w-20">Media</span>
+                <span className="w-12 text-right sm:w-14">vs</span>
               </div>
               <CompareRow label="Visualizzazioni" value={views} average={avg.views} />
               <CompareRow label="Mi piace" value={likes} average={avg.likes} />
               <CompareRow label="Commenti" value={comments} average={avg.comments} />
               <CompareRow label="Condivisioni" value={shares} average={avg.shares} />
               <div className="mt-1 border-t border-white/5 pt-3">
-                <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-3 text-sm">
-                  <span className="text-zinc-400">Tasso engagement</span>
-                  <span className="w-20 text-right font-semibold tabular-nums text-white">
+                <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
+                  <span className="truncate text-zinc-400">Tasso engagement</span>
+                  <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
                     {formatPercent(rate, 1)}
                   </span>
-                  <span className="w-20 text-right tabular-nums text-zinc-500">
+                  <span className="w-16 text-right tabular-nums text-zinc-500 sm:w-20">
                     {formatPercent(accountRate, 1)}
                   </span>
                   <span
-                    className={`w-14 text-right font-semibold tabular-nums ${
+                    className={`w-12 text-right font-semibold tabular-nums sm:w-14 ${
                       rate >= accountRate ? "text-emerald-400" : "text-tt-pink"
                     }`}
                   >
