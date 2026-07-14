@@ -4,8 +4,6 @@ import { useMemo, useState, type ComponentType, type SVGProps } from "react";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
   CommentIcon,
   EyeIcon,
   HeartIcon,
@@ -43,21 +41,15 @@ function fmt(n: number): string {
 
 /**
  * Cella numerica: testo bianco di base; alla variazione lampeggia verde (su) o
- * rosso (giù) con una freccia per ~1s, poi torna bianco.
+ * rosso (giù) per ~1s, poi torna bianco. Nessuna freccia, come in Panoramica.
  */
 function ValueCell({ value }: { value: number }) {
   const dir = useValueFlash(value);
   const color =
     dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
-    <td className="px-3 py-2 text-right">
-      <span
-        className={`inline-flex items-center justify-end gap-1 tabular-nums transition-colors duration-300 ${color}`}
-      >
-        {dir === "up" && <ArrowUpIcon className="h-3 w-3" />}
-        {dir === "down" && <ArrowDownIcon className="h-3 w-3" />}
-        {fmt(value)}
-      </span>
+    <td className={`px-3 py-2 text-right tabular-nums transition-colors duration-300 ${color}`}>
+      {fmt(value)}
     </td>
   );
 }
