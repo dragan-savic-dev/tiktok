@@ -13,9 +13,7 @@ import { Card } from "@/app/components/card";
 import DeltaBadge from "@/app/components/delta-badge";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
-import OdometerNumber from "@/app/components/odometer-number";
 import StatCard from "@/app/components/stat-card";
-import { useValueFlash } from "@/app/components/use-value-flash";
 import {
   engagementRate,
   formatCompact,
@@ -35,9 +33,6 @@ function HeroStat({
   value: number;
   delta?: number;
 }) {
-  const dir = useValueFlash(value);
-  const color =
-    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
     <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
       <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">
@@ -45,10 +40,10 @@ function HeroStat({
       </span>
       <div>
         {/* Badge in absolute: appare di fianco al numero senza mandarlo a capo. */}
-        <span className="relative inline-flex items-end">
-          <OdometerNumber
+        <span className="relative inline-flex items-end text-white">
+          <FlashNumber
             value={value}
-            className={`text-lg font-bold transition-colors duration-300 sm:text-2xl lg:text-3xl ${color}`}
+            className="text-lg font-bold sm:text-2xl lg:text-3xl"
           />
           <DeltaBadge
             delta={delta}
@@ -100,7 +95,7 @@ export default function OverviewPage() {
               center={
                 <>
                   <span className="text-3xl font-bold text-white">
-                    {formatPercent(rate, 1)}
+                    <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
                   </span>
                   <span className="text-[10px] uppercase tracking-widest text-zinc-500">
                     engagement
@@ -120,10 +115,13 @@ export default function OverviewPage() {
                     <span className="text-zinc-400">{i.label}</span>
                   </div>
                   <span className="w-10 text-right tabular-nums text-zinc-500">
-                    {interactionsTotal ? formatPercent(i.value / interactionsTotal, 0) : "0%"}
+                    <FlashNumber
+                      value={interactionsTotal ? i.value / interactionsTotal : 0}
+                      format={(f) => formatPercent(f, 0)}
+                    />
                   </span>
                   <span className="w-20 text-right font-semibold tabular-nums text-white">
-                    {i.value.toLocaleString("it-IT")}
+                    <FlashNumber value={i.value} />
                   </span>
                 </Fragment>
               ))}
@@ -200,7 +198,7 @@ export default function OverviewPage() {
             </div>
           </div>
           <p className="mt-auto text-xs text-zinc-500">
-            Somma su {totals.videosCounted.toLocaleString("it-IT")} video pubblici ·
+            Somma su <FlashNumber value={totals.videosCounted} /> video pubblici ·
             aggiornamento ogni 5 secondi · i “salvati” sono letti dalle pagine
             pubbliche circa ogni minuto (N/D se TikTok li blocca).
           </p>
@@ -254,21 +252,23 @@ export default function OverviewPage() {
                   <div className="flex items-center gap-3 text-xs text-zinc-500">
                     <span className="flex items-center gap-1">
                       <HeartIcon className="h-3 w-3 text-tt-pink" />
-                      {formatCompact(v.like_count)}
+                      <FlashNumber value={v.like_count ?? 0} format={formatCompact} />
                     </span>
                     <span className="flex items-center gap-1">
                       <CommentIcon className="h-3 w-3 text-tt-cyan" />
-                      {formatCompact(v.comment_count)}
+                      <FlashNumber value={v.comment_count ?? 0} format={formatCompact} />
                     </span>
                     <span className="flex items-center gap-1">
                       <ShareIcon className="h-3 w-3 text-tt-pink" />
-                      {formatCompact(v.share_count)}
+                      <FlashNumber value={v.share_count ?? 0} format={formatCompact} />
                     </span>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5 text-right">
                   <EyeIcon className="h-3.5 w-3.5 text-tt-cyan" />
-                  <span className="font-semibold text-white">{formatCompact(v.view_count)}</span>
+                  <span className="font-semibold text-white">
+                    <FlashNumber value={v.view_count ?? 0} format={formatCompact} />
+                  </span>
                 </div>
               </li>
             ))}
@@ -294,9 +294,10 @@ function StatTile({
         {label}
       </span>
       <span className="text-2xl font-bold text-white">
-        {exact
-          ? Math.round(value).toLocaleString("it-IT")
-          : formatCompact(Math.round(value))}
+        <FlashNumber
+          value={Math.round(value)}
+          format={exact ? undefined : (n) => formatCompact(n)}
+        />
       </span>
     </div>
   );

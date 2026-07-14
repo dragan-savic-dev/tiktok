@@ -20,16 +20,22 @@ function RollingDigit({ digit }: { digit: number }) {
 /**
  * Numero con cifre "a rullo" stile odometro (come i live counter tipo
  * TokCount): ogni cifra è una colonna 0-9 traslata via CSS transform,
- * così i cambi di valore scorrono invece di scattare.
+ * così i cambi di valore scorrono invece di scattare. `format` permette
+ * testi come "12,3%" o "1,2 Mln": i caratteri non numerici passano intatti.
  */
 export default function OdometerNumber({
   value,
+  format,
   className = "",
 }: {
   value: number;
+  format?: (n: number) => string;
   className?: string;
 }) {
-  const chars = Math.max(0, Math.round(value)).toLocaleString("it-IT").split("");
+  const text = format
+    ? format(value)
+    : Math.max(0, Math.round(value)).toLocaleString("it-IT");
+  const chars = text.split("");
 
   return (
     <span className={`inline-flex tabular-nums leading-none ${className}`}>

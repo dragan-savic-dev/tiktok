@@ -4,6 +4,7 @@ import { useMemo, useState, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
+import FlashNumber from "@/app/components/flash-number";
 import {
   CommentIcon,
   DownloadIcon,
@@ -12,7 +13,6 @@ import {
   ShareIcon,
   TrendUpIcon,
 } from "@/app/components/icons";
-import { useValueFlash } from "@/app/components/use-value-flash";
 import { videoEngagement, videoTitle } from "@/lib/metrics";
 import { useStats } from "../stats-context";
 import { ErrorBanner, Loading } from "../shared";
@@ -36,10 +36,6 @@ const COLUMNS: Column[] = [
 ];
 
 const PAGE_SIZE = 20;
-
-function fmt(n: number): string {
-  return n.toLocaleString("it-IT");
-}
 
 /** Cella CSV: quota se contiene virgole, virgolette o a-capo. */
 function csvCell(value: string | number): string {
@@ -86,16 +82,13 @@ function exportVideosCsv(list: VideoStats[]): void {
 }
 
 /**
- * Cella numerica: testo bianco di base; alla variazione lampeggia verde (su) o
- * rosso (giù) per ~1s, poi torna bianco. Nessuna freccia, come in Panoramica.
+ * Cella numerica: cifre a rullo + lampeggio verde (su) / rosso (giù) alla
+ * variazione, poi torna bianca. Nessuna freccia, come in Panoramica.
  */
 function ValueCell({ value }: { value: number }) {
-  const dir = useValueFlash(value);
-  const color =
-    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
-    <td className={`px-3 py-2 text-right tabular-nums transition-colors duration-300 ${color}`}>
-      {fmt(value)}
+    <td className="px-3 py-2 text-right tabular-nums text-white">
+      <FlashNumber value={value} />
     </td>
   );
 }
@@ -148,7 +141,11 @@ export default function VideoPage() {
       {error && <ErrorBanner message={error} />}
 
       <Card
-        title={`Tutti i video (${fmt(videos.length)})`}
+        title={
+          <>
+            Tutti i video (<FlashNumber value={videos.length} />)
+          </>
+        }
         action={
           <button
             onClick={() => exportVideosCsv(sorted)}
@@ -214,10 +211,15 @@ export default function VideoPage() {
                           </Link>
                           <p className="flex items-center gap-1 text-xs text-zinc-500">
                             <EyeIcon className="h-3 w-3" />
-                            {(rate * 100).toLocaleString("it-IT", {
-                              maximumFractionDigits: 1,
-                            })}
-                            % engagement
+                            <FlashNumber
+                              value={rate}
+                              format={(r) =>
+                                `${(r * 100).toLocaleString("it-IT", {
+                                  maximumFractionDigits: 1,
+                                })}%`
+                              }
+                            />
+                            engagement
                           </p>
                         </div>
                       </div>

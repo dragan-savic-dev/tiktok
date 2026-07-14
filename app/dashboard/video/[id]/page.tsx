@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Card } from "@/app/components/card";
 import DonutChart from "@/app/components/donut-chart";
+import FlashNumber from "@/app/components/flash-number";
 import {
   CommentIcon,
   EyeIcon,
@@ -12,7 +13,6 @@ import {
   PlayIcon,
   ShareIcon,
 } from "@/app/components/icons";
-import { useValueFlash } from "@/app/components/use-value-flash";
 import {
   formatDuration,
   formatMultiplier,
@@ -24,10 +24,6 @@ import {
 import { useStats } from "../../stats-context";
 import { CHART_COLORS, ErrorBanner, Loading } from "../../shared";
 
-function fmt(n: number): string {
-  return n.toLocaleString("it-IT");
-}
-
 function formatDate(t?: number): string | null {
   if (!t) return null;
   return new Date(t * 1000).toLocaleDateString("it-IT", {
@@ -37,33 +33,26 @@ function formatDate(t?: number): string | null {
   });
 }
 
-/** Tile metrica con icona. */
+/** Tile metrica con icona (sempre blu, come il resto della pagina). */
 function MetricTile({
   label,
   value,
   icon,
-  accent,
 }: {
   label: string;
   value: number;
   icon: ReactNode;
-  accent: string;
 }) {
-  const dir = useValueFlash(value);
-  const flash =
-    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
       <div className="flex items-center justify-between">
         <span className="truncate text-[10px] font-medium uppercase tracking-widest text-zinc-400 sm:text-xs">
           {label}
         </span>
-        <span className="shrink-0" style={{ color: accent }}>
-          {icon}
-        </span>
+        <span className="shrink-0 text-tt-cyan">{icon}</span>
       </div>
-      <span className={`text-xl font-semibold transition-colors duration-300 sm:text-2xl ${flash}`}>
-        {fmt(value)}
+      <span className="text-xl font-semibold text-white sm:text-2xl">
+        <FlashNumber value={value} />
       </span>
     </div>
   );
@@ -81,22 +70,17 @@ function CompareRow({
 }) {
   const ratio = average ? value / average : 0;
   const tone = ratio >= 1 ? "text-emerald-400" : "text-tt-pink";
-  const dir = useValueFlash(value);
-  const flash =
-    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
     <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 gap-y-1 text-sm sm:gap-x-3">
       <span className="truncate text-zinc-400">{label}</span>
-      <span
-        className={`w-16 text-right font-semibold tabular-nums transition-colors duration-300 sm:w-20 ${flash}`}
-      >
-        {fmt(value)}
+      <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
+        <FlashNumber value={value} />
       </span>
       <span className="w-16 text-right tabular-nums text-zinc-500 sm:w-20">
-        {fmt(Math.round(average))}
+        <FlashNumber value={Math.round(average)} />
       </span>
       <span className={`w-12 text-right font-semibold tabular-nums sm:w-14 ${tone}`}>
-        {formatMultiplier(value, average)}
+        <FlashNumber value={ratio} format={() => formatMultiplier(value, average)} />
       </span>
     </div>
   );
@@ -181,16 +165,17 @@ export default function VideoDetailPage() {
 
       {/* Intestazione: copertina + meta */}
       <Card bodyClassName="flex flex-col gap-4 p-4 sm:flex-row sm:gap-5 sm:p-5">
-        <div className="relative aspect-[9/16] w-32 shrink-0 self-center overflow-hidden rounded-xl bg-zinc-900 sm:w-36 sm:self-start">
+        {/* Copertina alla proporzione originale: niente ritaglio, l'altezza segue l'immagine. */}
+        <div className="relative w-32 shrink-0 self-center overflow-hidden rounded-xl bg-zinc-900 sm:w-36 sm:self-start">
           {video.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element -- copertina da CDN TikTok con URL a scadenza
             <img
               src={video.cover_image_url}
               alt={videoTitle(video)}
-              className="h-full w-full object-cover"
+              className="h-auto w-full"
             />
           ) : (
-            <div className="grid h-full w-full place-items-center text-zinc-700">
+            <div className="grid aspect-[9/16] w-full place-items-center text-zinc-700">
               <PlayIcon className="h-10 w-10" />
             </div>
           )}
@@ -226,29 +211,13 @@ export default function VideoDetailPage() {
 
       {/* Metriche */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricTile
-          label="Spettatori"
-          value={views}
-          icon={<EyeIcon className="h-4 w-4" />}
-          accent={CHART_COLORS.cyan}
-        />
-        <MetricTile
-          label="Mi piace"
-          value={likes}
-          icon={<HeartIcon className="h-4 w-4" />}
-          accent={CHART_COLORS.pink}
-        />
-        <MetricTile
-          label="Commenti"
-          value={comments}
-          icon={<CommentIcon className="h-4 w-4" />}
-          accent={CHART_COLORS.cyan}
-        />
+        <MetricTile label="Spettatori" value={views} icon={<EyeIcon className="h-4 w-4" />} />
+        <MetricTile label="Mi piace" value={likes} icon={<HeartIcon className="h-4 w-4" />} />
+        <MetricTile label="Commenti" value={comments} icon={<CommentIcon className="h-4 w-4" />} />
         <MetricTile
           label="Condivisioni"
           value={shares}
           icon={<ShareIcon className="h-4 w-4" />}
-          accent={CHART_COLORS.pink}
         />
       </div>
 
@@ -260,7 +229,9 @@ export default function VideoDetailPage() {
               segments={interactions}
               center={
                 <>
-                  <span className="text-3xl font-bold text-white">{formatPercent(rate, 1)}</span>
+                  <span className="text-3xl font-bold text-white">
+                    <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
+                  </span>
                   <span className="text-[10px] uppercase tracking-widest text-zinc-500">
                     engagement
                   </span>
@@ -279,10 +250,13 @@ export default function VideoDetailPage() {
                     <span className="text-zinc-400">{i.label}</span>
                   </div>
                   <span className="w-10 text-right tabular-nums text-zinc-500">
-                    {formatPercent(i.value / interactionsTotal, 0)}
+                    <FlashNumber
+                      value={i.value / interactionsTotal}
+                      format={(f) => formatPercent(f, 0)}
+                    />
                   </span>
                   <span className="w-20 text-right font-semibold tabular-nums text-white">
-                    {fmt(i.value)}
+                    <FlashNumber value={i.value} />
                   </span>
                 </Fragment>
               ))}
@@ -315,17 +289,20 @@ export default function VideoDetailPage() {
                 <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
                   <span className="truncate text-zinc-400">Tasso engagement</span>
                   <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
-                    {formatPercent(rate, 1)}
+                    <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
                   </span>
                   <span className="w-16 text-right tabular-nums text-zinc-500 sm:w-20">
-                    {formatPercent(accountRate, 1)}
+                    <FlashNumber value={accountRate} format={(f) => formatPercent(f, 1)} />
                   </span>
                   <span
                     className={`w-12 text-right font-semibold tabular-nums sm:w-14 ${
                       rate >= accountRate ? "text-emerald-400" : "text-tt-pink"
                     }`}
                   >
-                    {formatMultiplier(rate, accountRate)}
+                    <FlashNumber
+                      value={accountRate ? rate / accountRate : 0}
+                      format={() => formatMultiplier(rate, accountRate)}
+                    />
                   </span>
                 </div>
               </div>
@@ -347,7 +324,10 @@ function Rate1k({ label, value, color }: { label: string; value: number; color: 
   return (
     <div className="flex flex-col gap-1">
       <span className="text-2xl font-bold text-white">
-        {value.toLocaleString("it-IT", { maximumFractionDigits: 1 })}
+        <FlashNumber
+          value={value}
+          format={(n) => n.toLocaleString("it-IT", { maximumFractionDigits: 1 })}
+        />
       </span>
       <span className="flex items-center gap-1.5 text-xs text-zinc-500">
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />

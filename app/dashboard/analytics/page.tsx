@@ -3,6 +3,7 @@
 import { Card } from "@/app/components/card";
 import BarChart from "@/app/components/bar-chart";
 import DonutChart from "@/app/components/donut-chart";
+import FlashNumber from "@/app/components/flash-number";
 import RankedBars from "@/app/components/ranked-bars";
 import {
   engagementRate,
@@ -89,7 +90,10 @@ export default function AnalyticsPage() {
               center={
                 <>
                   <span className="text-2xl font-bold text-white">
-                    {formatPercent(engagementRate(stats), 1)}
+                    <FlashNumber
+                      value={engagementRate(stats)}
+                      format={(f) => formatPercent(f, 1)}
+                    />
                   </span>
                   <span className="text-[9px] uppercase tracking-widest text-zinc-500">
                     engagement
@@ -118,15 +122,18 @@ export default function AnalyticsPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <MiniStat
           label="Interazioni totali"
-          value={formatCompact(totals.likes + totals.comments + totals.shares)}
+          value={totals.likes + totals.comments + totals.shares}
+          format={formatCompact}
         />
         <MiniStat
           label="Miglior video (view)"
-          value={formatCompact(topByViews[0]?.view_count ?? 0)}
+          value={topByViews[0]?.view_count ?? 0}
+          format={formatCompact}
         />
         <MiniStat
           label="View dai top 10"
-          value={formatPercent(concentration, 0)}
+          value={concentration}
+          format={(f) => formatPercent(f, 0)}
           hint="quanta parte delle visualizzazioni arriva dai 10 video migliori"
         />
       </div>
@@ -137,10 +144,12 @@ export default function AnalyticsPage() {
 function MiniStat({
   label,
   value,
+  format,
   hint,
 }: {
   label: string;
-  value: string;
+  value: number;
+  format?: (n: number) => string;
   hint?: string;
 }) {
   return (
@@ -148,7 +157,9 @@ function MiniStat({
       <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">
         {label}
       </span>
-      <span className="text-2xl font-bold text-white">{value}</span>
+      <span className="text-2xl font-bold text-white">
+        <FlashNumber value={value} format={format} />
+      </span>
       {hint && <span className="text-xs text-zinc-500">{hint}</span>}
     </div>
   );

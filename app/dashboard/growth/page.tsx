@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { HistoryDelta, HistoryResponse, DailyPoint } from "@/lib/types";
 import { Card } from "@/app/components/card";
+import FlashNumber from "@/app/components/flash-number";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
 import { CHART_COLORS, Loading } from "../shared";
@@ -35,13 +36,21 @@ function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
     <Card title={label} bodyClassName="flex items-end justify-between gap-4 p-4 sm:p-5">
       <div className="flex flex-col">
         <span className={`text-2xl font-bold ${toneClass(delta.today)}`}>
-          {delta.today === null ? "—" : formatSigned(delta.today)}
+          {delta.today === null ? (
+            "—"
+          ) : (
+            <FlashNumber value={delta.today} format={formatSigned} />
+          )}
         </span>
         <span className="text-[10px] uppercase tracking-widest text-zinc-500">oggi</span>
       </div>
       <div className="flex flex-col items-end">
         <span className={`text-lg font-semibold ${toneClass(delta.week)}`}>
-          {delta.week === null ? "—" : formatSigned(delta.week)}
+          {delta.week === null ? (
+            "—"
+          ) : (
+            <FlashNumber value={delta.week} format={formatSigned} />
+          )}
         </span>
         <span className="text-[10px] uppercase tracking-widest text-zinc-500">7 giorni</span>
       </div>
@@ -197,9 +206,13 @@ export default function GrowthPage() {
               tracciare la crescita.
             </p>
             <p className="text-xs text-zinc-600">
-              {history?.count
-                ? `${history.count.toLocaleString("it-IT")} snapshot finora — torna più tardi.`
-                : "Lascia aperta la dashboard e torna più tardi."}
+              {history?.count ? (
+                <>
+                  <FlashNumber value={history.count} /> snapshot finora — torna più tardi.
+                </>
+              ) : (
+                "Lascia aperta la dashboard e torna più tardi."
+              )}
             </p>
           </div>
         </Card>
