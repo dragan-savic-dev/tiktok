@@ -145,9 +145,9 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
   const title = active?.label ?? "Dashboard";
 
   return (
-    <div className="flex min-h-dvh bg-[#050505]">
+    <div className="flex h-dvh overflow-hidden bg-[#050505]">
       {/* Sidebar fissa su desktop */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 border-r border-white/5 bg-[#0a0a0a] md:block">
+      <aside className="hidden h-full w-64 shrink-0 border-r border-white/5 bg-[#0a0a0a] md:block">
         <SidebarContent />
       </aside>
 
@@ -180,9 +180,9 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-full min-w-0 flex-1 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-30 border-b border-white/5 bg-[#050505]/80 backdrop-blur-md">
+        <header className="z-30 shrink-0 border-b border-white/5 bg-[#050505]/80 backdrop-blur-md">
           <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
             <div className="flex items-center gap-3">
               <button
@@ -201,7 +201,9 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-6">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ const COLUMNS: Column[] = [
   { key: "engagement", label: "Interaz.", pick: videoEngagement, icon: TrendUpIcon, iconClass: "text-tt-cyan" },
 ];
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 function fmt(n: number): string {
   return n.toLocaleString("it-IT");
@@ -98,15 +98,19 @@ export default function VideoPage() {
   const sortArrow = (key: SortKey) => (sortKey === key ? (sortDesc ? " ↓" : " ↑") : "");
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex h-full flex-col gap-5">
       {error && <ErrorBanner message={error} />}
 
-      <Card title={`Tutti i video (${fmt(videos.length)})`} bodyClassName="p-0 sm:p-0">
-        <div className="overflow-x-auto">
+      <Card
+        title={`Tutti i video (${fmt(videos.length)})`}
+        className="min-h-0 flex-1"
+        bodyClassName="flex min-h-0 flex-col p-0 sm:p-0"
+      >
+        <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[640px] select-none text-sm">
             <thead>
-              <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
-                <th className="px-4 py-2.5 font-medium sm:px-5">
+              <tr className="text-left text-[11px] uppercase tracking-wider text-zinc-500">
+                <th className="sticky top-0 z-10 border-b border-white/5 bg-[#0c0c0c] px-4 py-2.5 font-medium sm:px-5">
                   <button onClick={() => toggleSort("recent")} className="hover:text-white">
                     Video{sortArrow("recent")}
                   </button>
@@ -114,7 +118,10 @@ export default function VideoPage() {
                 {COLUMNS.map((c) => {
                   const Icon = c.icon;
                   return (
-                    <th key={c.key} className="px-3 py-2.5 text-right font-medium">
+                    <th
+                      key={c.key}
+                      className="sticky top-0 z-10 border-b border-white/5 bg-[#0c0c0c] px-3 py-2.5 text-right font-medium"
+                    >
                       <button
                         onClick={() => toggleSort(c.key)}
                         className="inline-flex items-center gap-1.5 hover:text-white"
@@ -179,7 +186,7 @@ export default function VideoPage() {
         </div>
 
         {pageCount > 1 && (
-          <div className="flex items-center justify-between gap-2 border-t border-white/5 px-4 py-3 sm:px-5">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/5 px-4 py-3 sm:px-5">
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={current === 0}
