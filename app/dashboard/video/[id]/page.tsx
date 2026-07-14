@@ -316,7 +316,7 @@ export default function VideoDetailPage() {
               )}
               <div className="mt-1 border-t border-white/5 pt-3">
                 <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
-                  <span className="truncate text-zinc-400">Tasso engagement</span>
+                  <span className="truncate text-zinc-400">Engagement</span>
                   <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
                     <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
                   </span>
@@ -351,7 +351,7 @@ export default function VideoDetailPage() {
 
 function Rate1k({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col items-center gap-1 text-center">
       <span className="text-2xl font-bold text-white">
         <FlashNumber
           value={value}
