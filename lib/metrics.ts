@@ -6,14 +6,16 @@ export function videoEngagement(v: VideoStats): number {
 }
 
 /**
- * Nome leggibile di un video: titolo, altrimenti la didascalia (troncata),
- * altrimenti la data di pubblicazione, con l'id come ultima spiaggia.
+ * Nome leggibile di un video: titolo o didascalia, ma solo la prima riga e
+ * senza hashtag (le didascalie TikTok sono tipo "Ring Escape - Level 300
+ * #ringescape #gameplay …" → teniamo "Ring Escape - Level 300"). Ripiega su
+ * data di pubblicazione e id.
  */
 export function videoTitle(v: VideoStats): string {
-  const title = v.title?.trim();
-  if (title) return title;
-  const desc = v.video_description?.trim();
-  if (desc) return desc.length > 60 ? `${desc.slice(0, 60)}…` : desc;
+  const raw = v.title?.trim() || v.video_description?.trim() || "";
+  // Prima riga, poi taglia dal primo hashtag.
+  const clean = raw.split("\n")[0].split("#")[0].trim();
+  if (clean) return clean;
   if (v.create_time) {
     return new Date(v.create_time * 1000).toLocaleDateString("it-IT", {
       day: "2-digit",

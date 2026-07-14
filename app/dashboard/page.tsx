@@ -12,7 +12,6 @@ import {
 import { Card } from "@/app/components/card";
 import DeltaBadge from "@/app/components/delta-badge";
 import DonutChart from "@/app/components/donut-chart";
-import Gauge from "@/app/components/gauge";
 import OdometerNumber from "@/app/components/odometer-number";
 import StatCard from "@/app/components/stat-card";
 import { useValueFlash } from "@/app/components/use-value-flash";
@@ -46,12 +45,18 @@ function HeroStat({
       <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">
         {label}
       </span>
-      <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
-        <OdometerNumber
-          value={value}
-          className={`text-lg font-bold transition-colors duration-300 sm:text-2xl lg:text-3xl ${color}`}
-        />
-        <DeltaBadge delta={delta} className="mb-1 text-xs" />
+      <div>
+        {/* Badge in absolute: appare di fianco al numero senza mandarlo a capo. */}
+        <span className="relative inline-flex items-end">
+          <OdometerNumber
+            value={value}
+            className={`text-lg font-bold transition-colors duration-300 sm:text-2xl lg:text-3xl ${color}`}
+          />
+          <DeltaBadge
+            delta={delta}
+            className="absolute bottom-1 left-full ml-1.5 whitespace-nowrap text-xs"
+          />
+        </span>
       </div>
     </div>
   );
@@ -89,7 +94,7 @@ export default function OverviewPage() {
       {error && <ErrorBanner message={error} />}
 
       {/* Donut interazioni + profilo/totali */}
-      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Ripartizione interazioni">
           <div className="flex flex-col items-center gap-5">
             <DonutChart
@@ -129,7 +134,7 @@ export default function OverviewPage() {
         </Card>
 
         <Card className="lg:col-span-2" bodyClassName="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             <HeroStat
               label="Seguiti"
               value={user.following_count ?? 0}
@@ -141,27 +146,39 @@ export default function OverviewPage() {
               delta={delta((s) => s.user.follower_count)}
               accent="pink"
             />
-            <HeroStat
-              label="Mi piace"
-              value={user.likes_count ?? 0}
-              delta={delta((s) => s.user.likes_count)}
-              accent="cyan"
-            />
+            {/* Mi piace: su mobile scende tra i totali (sotto); torna qui da lg. */}
+            <div className="hidden lg:block">
+              <HeroStat
+                label="Mi piace"
+                value={user.likes_count ?? 0}
+                delta={delta((s) => s.user.likes_count)}
+                accent="cyan"
+              />
+            </div>
           </div>
 
           <div className="flex flex-col gap-3">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400">
               Totali su tutti i video
             </h3>
-            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <StatCard
                 label="Visualizzazioni"
                 value={totals.views}
                 delta={delta((s) => s.totals.views)}
                 icon={<EyeIcon className="h-4 w-4" />}
                 accent="cyan"
-                className="col-span-2 xl:col-span-1"
+                className="col-span-2 lg:col-span-1"
               />
+              {/* Mi piace su mobile raggruppato coi totali; da lg torna tra i KPI. */}
+              <div className="lg:hidden">
+                <HeroStat
+                  label="Mi piace"
+                  value={user.likes_count ?? 0}
+                  delta={delta((s) => s.user.likes_count)}
+                  accent="cyan"
+                />
+              </div>
               <StatCard
                 label="Commenti"
                 value={totals.comments}
@@ -193,22 +210,8 @@ export default function OverviewPage() {
         </Card>
       </div>
 
-      {/* Rapporti + medie */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card title="Tasso di engagement" bodyClassName="flex items-center justify-center">
-          <Gauge
-            fraction={Math.min(rate / 0.15, 1)}
-            color={CHART_COLORS.emerald}
-            center={
-              <>
-                <span className="text-xl font-bold text-white">{formatPercent(rate, 1)}</span>
-                <span className="text-[9px] uppercase tracking-widest text-zinc-500">
-                  su visualizzazioni
-                </span>
-              </>
-            }
-          />
-        </Card>
+      {/* Medie per video */}
+      <div className="grid gap-4 sm:grid-cols-3">
         <StatTile
           label="Media view / video"
           value={perVideoAverage(totals.views, totals.videosCounted)}
@@ -240,7 +243,7 @@ export default function OverviewPage() {
             {recentVideos.map((v, i) => (
               <li
                 key={v.id}
-                className="flex items-center gap-3 px-4 py-3 text-sm sm:px-5"
+                className="flex items-center gap-3 px-4 py-2.5 text-sm sm:px-5"
               >
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-xs font-semibold text-zinc-400">
                   {i + 1}

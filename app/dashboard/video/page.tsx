@@ -50,7 +50,7 @@ function ValueCell({ value }: { value: number }) {
   const color =
     dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
-    <td className="px-3 py-3 text-right">
+    <td className="px-3 py-2 text-right">
       <span
         className={`inline-flex items-center justify-end gap-1 tabular-nums transition-colors duration-300 ${color}`}
       >
@@ -114,7 +114,7 @@ export default function VideoPage() {
           <table className="w-full min-w-[640px] select-none text-sm">
             <thead>
               <tr className="border-b border-white/5 text-left text-[11px] uppercase tracking-wider text-zinc-500">
-                <th className="px-4 py-3 font-medium sm:px-5">
+                <th className="px-4 py-2.5 font-medium sm:px-5">
                   <button onClick={() => toggleSort("recent")} className="hover:text-white">
                     Video{sortArrow("recent")}
                   </button>
@@ -122,7 +122,7 @@ export default function VideoPage() {
                 {COLUMNS.map((c) => {
                   const Icon = c.icon;
                   return (
-                    <th key={c.key} className="px-3 py-3 text-right font-medium">
+                    <th key={c.key} className="px-3 py-2.5 text-right font-medium">
                       <button
                         onClick={() => toggleSort(c.key)}
                         className="inline-flex items-center gap-1.5 hover:text-white"
@@ -143,7 +143,7 @@ export default function VideoPage() {
                 const rate = v.view_count ? videoEngagement(v) / v.view_count : 0;
                 return (
                   <tr key={v.id} className="transition-colors hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 sm:px-5">
+                    <td className="px-4 py-2 sm:px-5">
                       <div className="flex items-center gap-3">
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-xs font-semibold text-zinc-400">
                           {current * PAGE_SIZE + i + 1}

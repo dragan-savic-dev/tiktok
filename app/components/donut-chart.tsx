@@ -29,7 +29,7 @@ export default function DonutChart({
   className?: string;
 }) {
   const mid = size / 2;
-  const outer = mid - 3;
+  const outer = mid - 6;
   const inner = Math.max(0, outer - thickness);
 
   return (
@@ -43,7 +43,7 @@ export default function DonutChart({
           cy={mid}
           innerRadius={inner}
           outerRadius={outer}
-          paddingAngle={2}
+          paddingAngle={1}
           startAngle={90}
           endAngle={-270}
           stroke="none"
