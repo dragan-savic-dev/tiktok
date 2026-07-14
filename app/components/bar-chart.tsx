@@ -33,7 +33,11 @@ export default function BarChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={height} className={className}>
-      <RBarChart data={bars} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+      <RBarChart
+        data={bars}
+        margin={{ top: 8, right: 4, bottom: 0, left: 4 }}
+        accessibilityLayer={false}
+      >
         <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
         <XAxis
           dataKey="label"

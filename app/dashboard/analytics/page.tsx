@@ -22,18 +22,26 @@ const TOP_COUNT = 8;
 
 // getDay(): 0 = domenica; riportato a 0 = lunedì per leggere Lun→Dom.
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-const HOUR_BUCKETS = [
-  { label: "0–6", from: 0, to: 6 },
-  { label: "6–12", from: 6, to: 12 },
-  { label: "12–18", from: 12, to: 18 },
-  { label: "18–24", from: 18, to: 24 },
-];
-const DURATION_BUCKETS = [
-  { label: "<15s", from: 0, to: 15 },
-  { label: "15–30s", from: 15, to: 30 },
-  { label: "30–60s", from: 30, to: 60 },
-  { label: ">60s", from: 60, to: Infinity },
-];
+// Fasce orarie di pubblicazione da 2 ore (0–2, 2–4, … 22–24).
+const HOUR_BUCKETS = Array.from({ length: 12 }, (_, i) => ({
+  label: `${i * 2}–${i * 2 + 2}`,
+  from: i * 2,
+  to: i * 2 + 2,
+}));
+
+/**
+ * Scaglioni di durata da 10 secondi, generati fino alla durata massima
+ * presente (tetto a 60s, oltre si raggruppa in ">60s").
+ */
+function durationBuckets(maxDuration: number): { label: string; from: number; to: number }[] {
+  const top = Math.min(Math.max(10, Math.ceil(maxDuration / 10) * 10), 60);
+  const buckets = [];
+  for (let from = 0; from < top; from += 10) {
+    buckets.push({ label: `${from}–${from + 10}s`, from, to: from + 10 });
+  }
+  if (maxDuration > 60) buckets.push({ label: ">60s", from: 60, to: Infinity });
+  return buckets;
+}
 
 /** Etichetta breve del giorno di pubblicazione (dd/MM), per gli istogrammi. */
 function publishLabel(v: VideoStats): string {
@@ -201,9 +209,10 @@ export default function AnalyticsPage() {
     ),
   }));
 
-  // Durata × performance: view medie per fascia di durata.
+  // Durata × performance: view medie per scaglioni di 10 secondi.
   const timed = videos.filter((v) => v.duration && v.duration > 0);
-  const durationBars: BarDatum[] = DURATION_BUCKETS.map((b) => ({
+  const maxDuration = timed.reduce((max, v) => Math.max(max, v.duration!), 0);
+  const durationBars: BarDatum[] = durationBuckets(maxDuration).map((b) => ({
     label: b.label,
     value: averageWhere(
       timed,

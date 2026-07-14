@@ -35,7 +35,7 @@ export default function DonutChart({
 
   return (
     <div className={`relative ${className}`} style={{ width: size, height: size }}>
-      <PieChart width={size} height={size}>
+      <PieChart width={size} height={size} accessibilityLayer={false}>
         <Pie
           data={segments}
           dataKey="value"

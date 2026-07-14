@@ -78,6 +78,14 @@ body {
   }
 }
 
+/* Recharts: niente riquadro di focus/selezione quando si tocca o clicca un
+   grafico (l'outline nativo appariva su tap/click di ogni chart). */
+.recharts-wrapper,
+.recharts-wrapper * {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Anello di progresso del ciclo di aggiornamento (5s): il valore 50.265 è la
    circonferenza del cerchio r=8 usato in live-indicator.tsx */
 @keyframes ring-progress {

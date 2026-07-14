@@ -40,7 +40,11 @@ export default function LineChart({
 
   return (
     <ResponsiveContainer width="100%" height={height} className={className}>
-      <AreaChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
+      <AreaChart
+        data={data}
+        margin={{ top: 10, right: 12, bottom: 0, left: 0 }}
+        accessibilityLayer={false}
+      >
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity={0.35} />
