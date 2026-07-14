@@ -1,21 +1,38 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentType, type SVGProps } from "react";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
-import { EyeIcon } from "@/app/components/icons";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CommentIcon,
+  EyeIcon,
+  HeartIcon,
+  ShareIcon,
+  TrendUpIcon,
+} from "@/app/components/icons";
+import { useValueFlash } from "@/app/components/use-value-flash";
 import { videoEngagement, videoTitle } from "@/lib/metrics";
 import { useStats } from "../stats-context";
 import { ErrorBanner, Loading } from "../shared";
 
 type SortKey = "recent" | "views" | "likes" | "comments" | "shares" | "engagement";
 
-const COLUMNS: { key: SortKey; label: string; pick: (v: VideoStats) => number }[] = [
-  { key: "views", label: "Visual.", pick: (v) => v.view_count ?? 0 },
-  { key: "likes", label: "Mi piace", pick: (v) => v.like_count ?? 0 },
-  { key: "comments", label: "Commenti", pick: (v) => v.comment_count ?? 0 },
-  { key: "shares", label: "Condiv.", pick: (v) => v.share_count ?? 0 },
-  { key: "engagement", label: "Interaz.", pick: videoEngagement },
+interface Column {
+  key: SortKey;
+  label: string;
+  pick: (v: VideoStats) => number;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  iconClass: string;
+}
+
+const COLUMNS: Column[] = [
+  { key: "views", label: "Visual.", pick: (v) => v.view_count ?? 0, icon: EyeIcon, iconClass: "text-tt-cyan" },
+  { key: "likes", label: "Mi piace", pick: (v) => v.like_count ?? 0, icon: HeartIcon, iconClass: "text-tt-pink" },
+  { key: "comments", label: "Commenti", pick: (v) => v.comment_count ?? 0, icon: CommentIcon, iconClass: "text-tt-cyan" },
+  { key: "shares", label: "Condiv.", pick: (v) => v.share_count ?? 0, icon: ShareIcon, iconClass: "text-tt-pink" },
+  { key: "engagement", label: "Interaz.", pick: videoEngagement, icon: TrendUpIcon, iconClass: "text-tt-cyan" },
 ];
 
 const PAGE_SIZE = 10;
@@ -24,47 +41,34 @@ function fmt(n: number): string {
   return n.toLocaleString("it-IT");
 }
 
-/** Cella numerica che lampeggia verde se il valore è salito, rosso se sceso. */
-function ValueCell({
-  value,
-  prevValue,
-  weight = "",
-  base,
-}: {
-  value: number;
-  prevValue?: number;
-  weight?: string;
-  base: string;
-}) {
-  const tone =
-    prevValue === undefined || value === prevValue
-      ? null
-      : value > prevValue
-        ? "up"
-        : "down";
+/**
+ * Cella numerica: testo bianco di base; alla variazione lampeggia verde (su) o
+ * rosso (giù) con una freccia per ~1s, poi torna bianco.
+ */
+function ValueCell({ value }: { value: number }) {
+  const dir = useValueFlash(value);
   const color =
-    tone === "up" ? "text-emerald-400" : tone === "down" ? "text-tt-pink" : base;
+    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
-    <td className={`px-3 py-3 text-right tabular-nums transition-colors duration-700 ${weight} ${color}`}>
-      {fmt(value)}
+    <td className="px-3 py-3 text-right">
+      <span
+        className={`inline-flex items-center justify-end gap-1 tabular-nums transition-colors duration-300 ${color}`}
+      >
+        {dir === "up" && <ArrowUpIcon className="h-3 w-3" />}
+        {dir === "down" && <ArrowDownIcon className="h-3 w-3" />}
+        {fmt(value)}
+      </span>
     </td>
   );
 }
 
 export default function VideoPage() {
-  const { stats, previous, error } = useStats();
+  const { stats, error } = useStats();
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [sortDesc, setSortDesc] = useState(true);
   const [page, setPage] = useState(0);
 
   const videos = useMemo(() => stats?.videos ?? [], [stats]);
-
-  // Valori del poll precedente, per id: alimentano il colore su/giù per cella.
-  const prevById = useMemo(() => {
-    const m = new Map<string, VideoStats>();
-    previous?.videos.forEach((v) => m.set(v.id, v));
-    return m;
-  }, [previous]);
 
   const sorted = useMemo(() => {
     if (sortKey === "recent") {
@@ -115,20 +119,28 @@ export default function VideoPage() {
                     Video{sortArrow("recent")}
                   </button>
                 </th>
-                {COLUMNS.map((c) => (
-                  <th key={c.key} className="px-3 py-3 text-right font-medium">
-                    <button onClick={() => toggleSort(c.key)} className="hover:text-white">
-                      {c.label}
-                      {sortArrow(c.key)}
-                    </button>
-                  </th>
-                ))}
+                {COLUMNS.map((c) => {
+                  const Icon = c.icon;
+                  return (
+                    <th key={c.key} className="px-3 py-3 text-right font-medium">
+                      <button
+                        onClick={() => toggleSort(c.key)}
+                        className="inline-flex items-center gap-1.5 hover:text-white"
+                      >
+                        <Icon className={`h-3.5 w-3.5 ${c.iconClass}`} />
+                        <span>
+                          {c.label}
+                          {sortArrow(c.key)}
+                        </span>
+                      </button>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {rows.map((v, i) => {
                 const rate = v.view_count ? videoEngagement(v) / v.view_count : 0;
-                const prev = prevById.get(v.id);
                 return (
                   <tr key={v.id} className="transition-colors hover:bg-white/[0.02]">
                     <td className="px-4 py-3 sm:px-5">
@@ -162,33 +174,11 @@ export default function VideoPage() {
                         </div>
                       </div>
                     </td>
-                    <ValueCell
-                      value={v.view_count ?? 0}
-                      prevValue={prev?.view_count}
-                      weight="font-semibold"
-                      base="text-white"
-                    />
-                    <ValueCell
-                      value={v.like_count ?? 0}
-                      prevValue={prev?.like_count}
-                      base="text-zinc-300"
-                    />
-                    <ValueCell
-                      value={v.comment_count ?? 0}
-                      prevValue={prev?.comment_count}
-                      base="text-zinc-300"
-                    />
-                    <ValueCell
-                      value={v.share_count ?? 0}
-                      prevValue={prev?.share_count}
-                      base="text-zinc-300"
-                    />
-                    <ValueCell
-                      value={videoEngagement(v)}
-                      prevValue={prev ? videoEngagement(prev) : undefined}
-                      weight="font-semibold"
-                      base="text-tt-cyan"
-                    />
+                    <ValueCell value={v.view_count ?? 0} />
+                    <ValueCell value={v.like_count ?? 0} />
+                    <ValueCell value={v.comment_count ?? 0} />
+                    <ValueCell value={v.share_count ?? 0} />
+                    <ValueCell value={videoEngagement(v)} />
                   </tr>
                 );
               })}

@@ -1,6 +1,9 @@
+"use client";
+
 import type { ReactNode } from "react";
 import DeltaBadge from "./delta-badge";
 import OdometerNumber from "./odometer-number";
+import { useValueFlash } from "./use-value-flash";
 
 export default function StatCard({
   label,
@@ -18,6 +21,9 @@ export default function StatCard({
   accent?: "cyan" | "pink";
   className?: string;
 }) {
+  const dir = useValueFlash(value ?? 0);
+  const flash =
+    dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : "text-white";
   return (
     <div
       className={`flex flex-col gap-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 ${className}`}
@@ -34,7 +40,10 @@ export default function StatCard({
         {value === null ? (
           <span className="text-lg font-semibold leading-none text-zinc-500 sm:text-2xl">N/D</span>
         ) : (
-          <OdometerNumber value={value} className="text-lg font-semibold text-white sm:text-2xl" />
+          <OdometerNumber
+            value={value}
+            className={`text-lg font-semibold transition-colors duration-300 sm:text-2xl ${flash}`}
+          />
         )}
         <DeltaBadge delta={delta} className="mb-0.5 text-xs" />
       </div>

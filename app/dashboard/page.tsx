@@ -15,6 +15,7 @@ import DonutChart from "@/app/components/donut-chart";
 import Gauge from "@/app/components/gauge";
 import OdometerNumber from "@/app/components/odometer-number";
 import StatCard from "@/app/components/stat-card";
+import { useValueFlash } from "@/app/components/use-value-flash";
 import {
   engagementRate,
   formatCompact,
@@ -36,8 +37,10 @@ function HeroStat({
   delta?: number;
   accent?: "white" | "pink" | "cyan";
 }) {
-  const color =
+  const base =
     accent === "pink" ? "text-tt-pink" : accent === "cyan" ? "text-tt-cyan" : "text-white";
+  const dir = useValueFlash(value);
+  const color = dir === "up" ? "text-emerald-400" : dir === "down" ? "text-tt-pink" : base;
   return (
     <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
       <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">
@@ -46,7 +49,7 @@ function HeroStat({
       <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
         <OdometerNumber
           value={value}
-          className={`text-lg font-bold sm:text-2xl lg:text-3xl ${color}`}
+          className={`text-lg font-bold transition-colors duration-300 sm:text-2xl lg:text-3xl ${color}`}
         />
         <DeltaBadge delta={delta} className="mb-1 text-xs" />
       </div>
@@ -85,29 +88,8 @@ export default function OverviewPage() {
     <div className="flex flex-col gap-5">
       {error && <ErrorBanner message={error} />}
 
-      {/* KPI profilo */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <HeroStat
-          label="Seguiti"
-          value={user.following_count ?? 0}
-          delta={delta((s) => s.user.following_count)}
-        />
-        <HeroStat
-          label="Follower"
-          value={user.follower_count ?? 0}
-          delta={delta((s) => s.user.follower_count)}
-          accent="pink"
-        />
-        <HeroStat
-          label="Mi piace"
-          value={user.likes_count ?? 0}
-          delta={delta((s) => s.user.likes_count)}
-          accent="cyan"
-        />
-      </div>
-
-      {/* Donut interazioni + totali video */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* Donut interazioni + profilo/totali */}
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-start">
         <Card title="Ripartizione interazioni">
           <div className="flex flex-col items-center gap-5">
             <DonutChart
@@ -146,36 +128,62 @@ export default function OverviewPage() {
           </div>
         </Card>
 
-        <Card title="Totali su tutti i video" className="lg:col-span-2" bodyClassName="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-            <StatCard
-              label="Visualizzazioni"
-              value={totals.views}
-              delta={delta((s) => s.totals.views)}
-              icon={<EyeIcon className="h-4 w-4" />}
-              accent="cyan"
+        <Card className="lg:col-span-2" bodyClassName="flex flex-col gap-4">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <HeroStat
+              label="Seguiti"
+              value={user.following_count ?? 0}
+              delta={delta((s) => s.user.following_count)}
             />
-            <StatCard
-              label="Commenti"
-              value={totals.comments}
-              delta={delta((s) => s.totals.comments)}
-              icon={<CommentIcon className="h-4 w-4" />}
+            <HeroStat
+              label="Follower"
+              value={user.follower_count ?? 0}
+              delta={delta((s) => s.user.follower_count)}
               accent="pink"
             />
-            <StatCard
-              label="Condivisioni"
-              value={totals.shares}
-              delta={delta((s) => s.totals.shares)}
-              icon={<ShareIcon className="h-4 w-4" />}
+            <HeroStat
+              label="Mi piace"
+              value={user.likes_count ?? 0}
+              delta={delta((s) => s.user.likes_count)}
               accent="cyan"
             />
-            <StatCard
-              label="Salvati"
-              value={saved}
-              delta={delta((s) => s.saved ?? undefined)}
-              icon={<BookmarkIcon className="h-4 w-4" />}
-              accent="pink"
-            />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400">
+              Totali su tutti i video
+            </h3>
+            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+              <StatCard
+                label="Visualizzazioni"
+                value={totals.views}
+                delta={delta((s) => s.totals.views)}
+                icon={<EyeIcon className="h-4 w-4" />}
+                accent="cyan"
+                className="col-span-2 xl:col-span-1"
+              />
+              <StatCard
+                label="Commenti"
+                value={totals.comments}
+                delta={delta((s) => s.totals.comments)}
+                icon={<CommentIcon className="h-4 w-4" />}
+                accent="pink"
+              />
+              <StatCard
+                label="Condivisioni"
+                value={totals.shares}
+                delta={delta((s) => s.totals.shares)}
+                icon={<ShareIcon className="h-4 w-4" />}
+                accent="cyan"
+              />
+              <StatCard
+                label="Salvati"
+                value={saved}
+                delta={delta((s) => s.saved ?? undefined)}
+                icon={<BookmarkIcon className="h-4 w-4" />}
+                accent="pink"
+              />
+            </div>
           </div>
           <p className="mt-auto text-xs text-zinc-500">
             Somma su {totals.videosCounted.toLocaleString("it-IT")} video pubblici ·
