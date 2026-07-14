@@ -16,7 +16,6 @@ import {
 } from "@/app/components/icons";
 import {
   formatDuration,
-  formatMultiplier,
   formatPercent,
   videoEngagementRate,
   videoTitle,
@@ -77,19 +76,14 @@ function CompareRow({
   value: number;
   average: number;
 }) {
-  const ratio = average ? value / average : 0;
-  const tone = ratio >= 1 ? "text-emerald-400" : "text-tt-pink";
   return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 gap-y-1 text-sm sm:gap-x-3">
+    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 gap-y-1 text-sm sm:gap-x-3">
       <span className="truncate text-zinc-400">{label}</span>
       <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
         <FlashNumber value={value} />
       </span>
       <span className="w-16 text-right tabular-nums text-zinc-500 sm:w-20">
         <FlashNumber value={Math.round(average)} />
-      </span>
-      <span className={`w-12 text-right font-semibold tabular-nums sm:w-14 ${tone}`}>
-        <FlashNumber value={ratio} format={() => formatMultiplier(value, average)} />
       </span>
     </div>
   );
@@ -200,12 +194,14 @@ export default function VideoDetailPage() {
         </div>
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">
           <h1 className="text-lg font-bold text-white sm:text-xl">{videoTitle(video)}</h1>
+          <span className="w-fit rounded-full border border-tt-cyan/30 bg-tt-cyan/10 px-2.5 py-0.5 text-xs font-medium text-tt-cyan">
+            #<FlashNumber value={rankViews} /> per visualizzazioni
+          </span>
           {video.video_description && (
             <p className="line-clamp-2 text-sm text-zinc-400">{video.video_description}</p>
           )}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
             {date && <span>Pubblicato il {date}</span>}
-            <span>#{rankViews} per visualizzazioni</span>
             {duration && <span>Durata {duration}</span>}
           </div>
           {video.share_url && (
@@ -301,11 +297,10 @@ export default function VideoDetailPage() {
 
           <Card title="Confronto con la media del profilo">
             <div className="flex flex-col gap-3">
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10px] uppercase tracking-wider text-zinc-500">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-[10px] uppercase tracking-wider text-zinc-500">
                 <span />
                 <span className="w-16 text-right sm:w-20">Questo</span>
                 <span className="w-16 text-right sm:w-20">Media</span>
-                <span className="w-12 text-right sm:w-14">vs</span>
               </div>
               <CompareRow label="Visualizzazioni" value={views} average={avg.views} />
               <CompareRow label="Mi piace" value={likes} average={avg.likes} />
@@ -315,23 +310,13 @@ export default function VideoDetailPage() {
                 <CompareRow label="Salvati" value={saved} average={accountSaved / count} />
               )}
               <div className="mt-1 border-t border-white/5 pt-3">
-                <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
+                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
                   <span className="truncate text-zinc-400">Engagement</span>
                   <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
                     <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
                   </span>
                   <span className="w-16 text-right tabular-nums text-zinc-500 sm:w-20">
                     <FlashNumber value={accountRate} format={(f) => formatPercent(f, 1)} />
-                  </span>
-                  <span
-                    className={`w-12 text-right font-semibold tabular-nums sm:w-14 ${
-                      rate >= accountRate ? "text-emerald-400" : "text-tt-pink"
-                    }`}
-                  >
-                    <FlashNumber
-                      value={accountRate ? rate / accountRate : 0}
-                      format={() => formatMultiplier(rate, accountRate)}
-                    />
                   </span>
                 </div>
               </div>
