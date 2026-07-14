@@ -10,15 +10,17 @@ import type {
 // Store storico su filesystem: un file JSON per utente (open_id) con l'elenco
 // degli snapshot. È volutamente senza database — coerente con l'app, che non
 // dipende da servizi esterni. Gli snapshot si accumulano mentre l'app è aperta
-// (una foto al minuto), alimentando i grafici di crescita.
+// (una foto al minuto), alimentando i grafici di crescita. Nota: su hosting
+// serverless (es. Vercel) il filesystem è effimero, quindi lo storico riparte
+// quando l'istanza viene riciclata.
 
 const DATA_DIR = path.join(process.cwd(), ".data", "history");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 // Cadenza minima tra due snapshot dello stesso utente.
 const SNAPSHOT_INTERVAL_MS = 60_000;
-// Oltre questa età gli snapshot vengono potati; il tetto sul numero è una
-// rete di sicurezza contro file fuori scala.
+// Retention e tetto assoluto come rete di sicurezza.
 const RETENTION_DAYS = 120;
 const MAX_SNAPSHOTS = 20_000;
 
@@ -43,6 +45,39 @@ async function readSnapshots(openId: string): Promise<HistorySnapshot[]> {
     // File assente o illeggibile: si riparte da storico vuoto.
     return [];
   }
+}
+
+/**
+ * Downsampling con retention: minuto per le ultime 48 ore, orario fino a 14
+ * giorni, giornaliero fino a RETENTION_DAYS. Tiene il file piccolo senza
+ * perdere i grafici: la vista oraria copre 7 giorni, quella giornaliera il
+ * resto.
+ */
+function compactSnapshots(
+  snapshots: HistorySnapshot[],
+  now: number,
+): HistorySnapshot[] {
+  const minuteCut = now - 2 * DAY_MS;
+  const hourCut = now - 14 * DAY_MS;
+  const cutoff = now - RETENTION_DAYS * DAY_MS;
+
+  const byBucket = new Map<string, HistorySnapshot>();
+  for (const s of snapshots) {
+    if (s.t < cutoff) continue;
+    const key =
+      s.t >= minuteCut
+        ? `m${Math.floor(s.t / SNAPSHOT_INTERVAL_MS)}`
+        : s.t >= hourCut
+          ? `h${Math.floor(s.t / HOUR_MS)}`
+          : `d${dayKey(s.t)}`;
+    byBucket.set(key, s); // gli snapshot sono ordinati: vince l'ultimo del bucket
+  }
+
+  let pruned = [...byBucket.values()].sort((a, b) => a.t - b.t);
+  if (pruned.length > MAX_SNAPSHOTS) {
+    pruned = pruned.slice(pruned.length - MAX_SNAPSHOTS);
+  }
+  return pruned;
 }
 
 function enqueueWrite(openId: string, task: () => Promise<void>): Promise<void> {
@@ -73,15 +108,12 @@ export async function recordSnapshot(
     if (now - lastT < SNAPSHOT_INTERVAL_MS) return;
 
     snapshots.push(snapshot);
-
-    const cutoff = now - RETENTION_DAYS * DAY_MS;
-    let pruned = snapshots.filter((s) => s.t >= cutoff);
-    if (pruned.length > MAX_SNAPSHOTS) {
-      pruned = pruned.slice(pruned.length - MAX_SNAPSHOTS);
-    }
-
     await mkdir(DATA_DIR, { recursive: true });
-    await writeFile(fileFor(openId), JSON.stringify(pruned), "utf8");
+    await writeFile(
+      fileFor(openId),
+      JSON.stringify(compactSnapshots(snapshots, now)),
+      "utf8",
+    );
   });
 }
 

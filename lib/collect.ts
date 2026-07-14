@@ -8,8 +8,8 @@ import type { StatsResponse } from "./types";
 // ma più tab aperte (e il job in background) condividono la stessa chiamata.
 const USER_TTL_MS = 4500;
 
-// I "salvati" arrivano via scraping (una pagina per video): cadenza più lenta
-// per non farsi bloccare da TikTok.
+// I "salvati" arrivano via scraping a rotazione (un lotto di pagine per
+// ciclo, vedi tiktok-scrape.ts): cadenza lenta per non farsi bloccare.
 const SAVED_TTL_MS = 60_000;
 
 // L'aggregato costa ceil(video_count/20) richieste a /v2/video/list/: con tanti

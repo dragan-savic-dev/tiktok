@@ -3,6 +3,10 @@ import { collectStats } from "@/lib/collect";
 import { getOpenId, getValidAccessToken } from "@/lib/session";
 import { TikTokApiError } from "@/lib/tiktok";
 
+// Il ciclo che rinnova i "salvati" scarica un lotto di pagine con delle pause:
+// su Vercel il default (10s) potrebbe non bastare con molti video.
+export const maxDuration = 60;
+
 export async function GET() {
   const accessToken = await getValidAccessToken();
   const openId = await getOpenId();
