@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { recordLocalSnapshot } from "@/lib/local-history";
 import type { StatsResponse } from "@/lib/types";
 
 const POLL_MS = 5000;
@@ -57,6 +58,8 @@ export default function StatsProvider({ children }: { children: React.ReactNode 
       lastRef.current = body as StatsResponse;
       setStats(body as StatsResponse);
       setError(null);
+      // Alimenta lo storico locale (localStorage) per la pagina Crescita.
+      recordLocalSnapshot(body as StatsResponse);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(body));
       } catch {

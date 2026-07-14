@@ -1,28 +1,24 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type {
-  DailyPoint,
-  HistoryDelta,
-  HistoryResponse,
-  HistorySnapshot,
-} from "./types";
+import {
+  compactSnapshots,
+  computeDelta,
+  DAY_MS,
+  SNAPSHOT_INTERVAL_MS,
+  toSeries,
+  type HistoryGranularity,
+} from "./snapshots";
+import type { HistoryResponse, HistorySnapshot } from "./types";
 
 // Store storico su filesystem: un file JSON per utente (open_id) con l'elenco
 // degli snapshot. È volutamente senza database — coerente con l'app, che non
 // dipende da servizi esterni. Gli snapshot si accumulano mentre l'app è aperta
 // (una foto al minuto), alimentando i grafici di crescita. Nota: su hosting
-// serverless (es. Vercel) il filesystem è effimero, quindi lo storico riparte
-// quando l'istanza viene riciclata.
+// serverless (es. Vercel) il filesystem è effimero, quindi questo storico è
+// solo una delle fonti — il client ne tiene una copia in localStorage
+// (lib/local-history.ts) e la pagina Crescita unisce le due.
 
 const DATA_DIR = path.join(process.cwd(), ".data", "history");
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
-// Cadenza minima tra due snapshot dello stesso utente.
-const SNAPSHOT_INTERVAL_MS = 60_000;
-// Retention e tetto assoluto come rete di sicurezza.
-const RETENTION_DAYS = 120;
-const MAX_SNAPSHOTS = 20_000;
 
 // Fast-path in memoria: evita l'I/O su disco negli 11/12 poll al minuto in cui
 // non c'è nulla da salvare.
@@ -45,39 +41,6 @@ async function readSnapshots(openId: string): Promise<HistorySnapshot[]> {
     // File assente o illeggibile: si riparte da storico vuoto.
     return [];
   }
-}
-
-/**
- * Downsampling con retention: minuto per le ultime 48 ore, orario fino a 14
- * giorni, giornaliero fino a RETENTION_DAYS. Tiene il file piccolo senza
- * perdere i grafici: la vista oraria copre 7 giorni, quella giornaliera il
- * resto.
- */
-function compactSnapshots(
-  snapshots: HistorySnapshot[],
-  now: number,
-): HistorySnapshot[] {
-  const minuteCut = now - 2 * DAY_MS;
-  const hourCut = now - 14 * DAY_MS;
-  const cutoff = now - RETENTION_DAYS * DAY_MS;
-
-  const byBucket = new Map<string, HistorySnapshot>();
-  for (const s of snapshots) {
-    if (s.t < cutoff) continue;
-    const key =
-      s.t >= minuteCut
-        ? `m${Math.floor(s.t / SNAPSHOT_INTERVAL_MS)}`
-        : s.t >= hourCut
-          ? `h${Math.floor(s.t / HOUR_MS)}`
-          : `d${dayKey(s.t)}`;
-    byBucket.set(key, s); // gli snapshot sono ordinati: vince l'ultimo del bucket
-  }
-
-  let pruned = [...byBucket.values()].sort((a, b) => a.t - b.t);
-  if (pruned.length > MAX_SNAPSHOTS) {
-    pruned = pruned.slice(pruned.length - MAX_SNAPSHOTS);
-  }
-  return pruned;
 }
 
 function enqueueWrite(openId: string, task: () => Promise<void>): Promise<void> {
@@ -115,72 +78,6 @@ export async function recordSnapshot(
       "utf8",
     );
   });
-}
-
-/** Chiave giorno YYYY-MM-DD nel fuso del server (per i bucket giornalieri). */
-function dayKey(t: number): string {
-  return new Date(t).toLocaleDateString("sv-SE"); // sv-SE => 2026-07-13
-}
-
-/** Chiave ora "YYYY-MM-DD HH" nel fuso del server (bucket orari). */
-function hourKey(t: number): string {
-  return `${dayKey(t)} ${String(new Date(t).getHours()).padStart(2, "0")}`;
-}
-
-export type HistoryGranularity = "day" | "hour";
-
-/** Ultimo snapshot di ogni bucket (giorno oppure ora), in ordine cronologico. */
-function toSeries(
-  snapshots: HistorySnapshot[],
-  granularity: HistoryGranularity,
-): DailyPoint[] {
-  const keyOf = granularity === "hour" ? hourKey : dayKey;
-  const byBucket = new Map<string, HistorySnapshot>();
-  for (const s of snapshots) {
-    byBucket.set(keyOf(s.t), s); // gli snapshot sono ordinati: vince l'ultimo
-  }
-  return [...byBucket.entries()]
-    .map(([day, s]) => ({ ...s, day }))
-    .sort((a, b) => a.day.localeCompare(b.day));
-}
-
-/** Ultimo valore non-null con t <= target, oppure null se non esiste. */
-function valueBefore(
-  snapshots: HistorySnapshot[],
-  target: number,
-  pick: (s: HistorySnapshot) => number | null,
-): number | null {
-  let result: number | null = null;
-  for (const s of snapshots) {
-    if (s.t > target) break;
-    const v = pick(s);
-    if (v !== null) result = v;
-  }
-  return result;
-}
-
-function computeDelta(
-  snapshots: HistorySnapshot[],
-  pick: (s: HistorySnapshot) => number | null,
-  now: number,
-): HistoryDelta {
-  // Ignora gli snapshot senza valore (es. "salvati" non disponibili).
-  const valued = snapshots.filter((s) => pick(s) !== null);
-  if (valued.length === 0) return { today: null, week: null };
-  const latest = pick(valued[valued.length - 1]) as number;
-
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  // Valore "a mezzanotte": ultimo di ieri, o il primo di oggi se l'app è nuova.
-  let todayBase = valueBefore(valued, startOfToday.getTime(), pick);
-  if (todayBase === null) todayBase = pick(valued[0]);
-
-  const weekBase = valueBefore(valued, now - 7 * DAY_MS, pick);
-
-  return {
-    today: todayBase === null ? null : latest - todayBase,
-    week: weekBase === null ? null : latest - weekBase,
-  };
 }
 
 /** Costruisce la risposta storica per l'utente sull'intervallo richiesto. */

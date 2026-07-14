@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DailyPoint, HistoryDelta, HistoryResponse, VideoStats } from "@/lib/types";
+import type {
+  DailyPoint,
+  HistoryDelta,
+  HistoryResponse,
+  HistorySnapshot,
+  VideoStats,
+} from "@/lib/types";
 import { Card } from "@/app/components/card";
 import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import FlashNumber from "@/app/components/flash-number";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
+import { readLocalSnapshots } from "@/lib/local-history";
 import { formatCompact } from "@/lib/metrics";
+import { computeDelta, DAY_MS, mergeSnapshots, toSeries } from "@/lib/snapshots";
 import { useStats } from "../stats-context";
 import { CHART_COLORS, Loading } from "../shared";
 
@@ -143,6 +151,7 @@ export default function GrowthPage() {
   const [days, setDays] = useState(30);
   const [mode, setMode] = useState<"total" | "delta">("total");
   const [history, setHistory] = useState<HistoryResponse | null>(null);
+  const [localSnaps, setLocalSnaps] = useState<HistorySnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { stats } = useStats();
@@ -154,6 +163,9 @@ export default function GrowthPage() {
     let cancelled = false;
     const granularity = days === 7 ? "hour" : "day";
     const load = async () => {
+      // Storico locale (localStorage): sopravvive anche quando il server è
+      // serverless e il suo filesystem viene riciclato.
+      setLocalSnaps(readLocalSnapshots());
       try {
         const res = await fetch(`/api/history?days=${days}&granularity=${granularity}`, {
           cache: "no-store",
@@ -187,7 +199,27 @@ export default function GrowthPage() {
 
   if (loading && !history) return <Loading label="Carico lo storico…" />;
 
-  const daily = history?.daily ?? [];
+  // Unione delle due fonti: snapshot del server (quando il suo storico esiste)
+  // e snapshot locali del browser. Serie e delta si calcolano sul totale.
+  // "Adesso" è derivato dai dati (Date.now() nel render violerebbe la purezza).
+  const now = Math.max(
+    stats?.fetchedAt ?? 0,
+    history?.daily.at(-1)?.t ?? 0,
+    localSnaps.at(-1)?.t ?? 0,
+  );
+  const merged = mergeSnapshots(history?.daily ?? [], localSnaps, now);
+  const windowed = merged.filter((s) => s.t >= now - days * DAY_MS);
+  const daily = toSeries(windowed, hourly ? "hour" : "day");
+  const count = merged.length;
+  const deltas = {
+    followers: computeDelta(merged, (s) => s.followers, now),
+    views: computeDelta(merged, (s) => s.views, now),
+    likes: computeDelta(merged, (s) => s.likes, now),
+    comments: computeDelta(merged, (s) => s.comments, now),
+    shares: computeDelta(merged, (s) => s.shares, now),
+    saved: computeDelta(merged, (s) => s.saved, now),
+  };
+
   const enoughData = daily.length >= 2;
   const deltaMode = mode === "delta";
 
@@ -197,7 +229,7 @@ export default function GrowthPage() {
 
   // Proiezione del prossimo traguardo follower al ritmo degli ultimi 7 giorni.
   const followers = stats?.user.follower_count ?? null;
-  const weekGain = history?.deltas.followers.week ?? null;
+  const weekGain = deltas.followers.week;
   const milestone =
     followers !== null && weekGain !== null && weekGain > 0
       ? {
@@ -231,7 +263,8 @@ export default function GrowthPage() {
       {/* Selettore intervallo + modalità */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-500">
-          Andamento reale nel tempo, dai dati salvati mentre usi l’app.
+          Andamento reale nel tempo: gli snapshot si salvano nel tuo browser
+          mentre usi l’app.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
@@ -288,14 +321,14 @@ export default function GrowthPage() {
       )}
 
       {/* Delta oggi / 7 giorni su tutte le metriche */}
-      {history && (
+      {count > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <DeltaStat label="Follower" delta={history.deltas.followers} />
-          <DeltaStat label="Visualizzazioni" delta={history.deltas.views} />
-          <DeltaStat label="Mi piace" delta={history.deltas.likes} />
-          <DeltaStat label="Commenti" delta={history.deltas.comments} />
-          <DeltaStat label="Condivisioni" delta={history.deltas.shares} />
-          <DeltaStat label="Salvati" delta={history.deltas.saved} />
+          <DeltaStat label="Follower" delta={deltas.followers} />
+          <DeltaStat label="Visualizzazioni" delta={deltas.views} />
+          <DeltaStat label="Mi piace" delta={deltas.likes} />
+          <DeltaStat label="Commenti" delta={deltas.comments} />
+          <DeltaStat label="Condivisioni" delta={deltas.shares} />
+          <DeltaStat label="Salvati" delta={deltas.saved} />
         </div>
       )}
 
@@ -352,14 +385,14 @@ export default function GrowthPage() {
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <TrendUpIcon className="h-10 w-10 text-zinc-600" />
             <p className="max-w-md text-sm text-zinc-400">
-              Sto raccogliendo i dati. Le statistiche vengono salvate mentre usi
-              l’app (una foto al minuto): servono almeno due giorni diversi per
-              tracciare la crescita.
+              Sto raccogliendo i dati. Le statistiche vengono salvate nel tuo
+              browser (e sul server) mentre usi l’app, una foto al minuto:
+              servono almeno due momenti diversi per tracciare la crescita.
             </p>
             <p className="text-xs text-zinc-600">
-              {history?.count ? (
+              {count ? (
                 <>
-                  <FlashNumber value={history.count} /> snapshot finora — torna più tardi.
+                  <FlashNumber value={count} /> snapshot finora — torna più tardi.
                 </>
               ) : (
                 "Lascia aperta la dashboard e torna più tardi."
