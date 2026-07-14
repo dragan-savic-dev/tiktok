@@ -84,7 +84,7 @@ export default function OverviewPage() {
   ];
   const interactionsTotal = interactions.reduce((s, i) => s + i.value, 0);
 
-  const recentVideos = videos.slice(0, 5);
+  const recentVideos = videos.slice(0, 10);
 
   return (
     <div className="flex flex-col gap-5">
@@ -130,7 +130,7 @@ export default function OverviewPage() {
           </div>
         </Card>
 
-        <Card className="lg:col-span-2" bodyClassName="flex flex-col gap-4">
+        <Card className="lg:col-span-2" bodyClassName="flex flex-col gap-4 p-4 sm:p-5">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             <HeroStat
               label="Seguiti"
@@ -228,7 +228,7 @@ export default function OverviewPage() {
             Vedi tutti →
           </Link>
         }
-        bodyClassName="p-0 sm:p-0"
+        bodyClassName=""
       >
         {recentVideos.length === 0 ? (
           <p className="p-5 text-sm text-zinc-500">Nessun video pubblico trovato.</p>

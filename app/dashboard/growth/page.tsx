@@ -32,7 +32,7 @@ function toneClass(n: number | null): string {
 
 function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
   return (
-    <Card title={label} bodyClassName="flex items-end justify-between gap-4">
+    <Card title={label} bodyClassName="flex items-end justify-between gap-4 p-4 sm:p-5">
       <div className="flex flex-col">
         <span className={`text-2xl font-bold ${toneClass(delta.today)}`}>
           {delta.today === null ? "—" : formatSigned(delta.today)}

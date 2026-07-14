@@ -104,7 +104,7 @@ export default function VideoPage() {
       <Card
         title={`Tutti i video (${fmt(videos.length)})`}
         className="min-h-0 flex-1"
-        bodyClassName="flex min-h-0 flex-col p-0 sm:p-0"
+        bodyClassName="flex min-h-0 flex-col"
       >
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[640px] select-none text-sm">

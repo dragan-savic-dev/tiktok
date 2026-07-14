@@ -5,7 +5,7 @@ export function Card({
   title,
   action,
   children,
-  bodyClassName = "",
+  bodyClassName = "p-4 sm:p-5",
   className = "",
 }: {
   title?: ReactNode;
@@ -28,7 +28,7 @@ export function Card({
           {action}
         </header>
       )}
-      <div className={`flex-1 p-4 sm:p-5 ${bodyClassName}`}>{children}</div>
+      <div className={`flex-1 ${bodyClassName}`}>{children}</div>
     </section>
   );
 }
