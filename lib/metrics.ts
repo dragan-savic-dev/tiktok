@@ -91,10 +91,13 @@ export function topVideosBy(
   return limit ? sorted.slice(0, limit) : sorted;
 }
 
-/** Percentuale (0..100) formattata con al massimo `digits` decimali. */
-export function formatPercent(fraction: number, digits = 1): string {
+/**
+ * Percentuale (0..100) con al massimo `digits` decimali. `minDigits` forza un
+ * minimo di decimali (es. 2,2 → sempre "1,00%"); default 0 = compatibile.
+ */
+export function formatPercent(fraction: number, digits = 1, minDigits = 0): string {
   return `${(fraction * 100).toLocaleString(numberLocale(), {
-    minimumFractionDigits: 0,
+    minimumFractionDigits: minDigits,
     maximumFractionDigits: digits,
   })}%`;
 }

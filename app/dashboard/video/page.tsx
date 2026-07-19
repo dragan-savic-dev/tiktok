@@ -136,7 +136,7 @@ function ShareCell({ rate }: { rate: number }) {
           className="h-1.5 w-1.5 rounded-full bg-current"
           aria-hidden="true"
         />
-        <FlashNumber value={rate} format={(r) => formatPercent(r, 1)} />
+        <FlashNumber value={rate} format={(r) => formatPercent(r, 2, 2)} />
       </span>
     </td>
   );
