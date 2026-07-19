@@ -76,7 +76,7 @@ function MetricCard({
   return (
     <Card title={label} bodyClassName="flex flex-col gap-2 p-4 sm:p-5">
       <span className="text-2xl font-bold text-white sm:text-3xl">
-        {current === null ? "—" : <FlashNumber value={current} format={formatCompact} />}
+        {current === null ? "—" : <FlashNumber value={current} />}
       </span>
       <div className="flex items-center justify-between gap-3 text-xs">
         <span className="flex items-baseline gap-1.5">
