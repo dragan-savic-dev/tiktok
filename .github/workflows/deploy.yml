@@ -1,0 +1,38 @@
+name: Deploy to Hetzner
+
+# Deploy automatico del collettore: a ogni push su main (o avvio manuale) il
+# server si aggiorna via SSH — git reset a origin/main, rebuild, restart del
+# servizio systemd. La chiave privata sta nel secret HETZNER_SSH_KEY.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hetzner
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HOST: 178.105.236.211
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new "root@$HOST" '
+            set -e
+            cd /var/www/tiktok
+            git fetch --depth 1 origin main
+            git reset --hard FETCH_HEAD
+            npm ci
+            npm run build
+            systemctl restart tiktok-collector
+            echo "deploy completato: $(git rev-parse --short HEAD)"
+          '
