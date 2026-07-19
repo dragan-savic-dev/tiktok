@@ -209,6 +209,25 @@ export default function AnalyticsPage() {
     ),
   }));
 
+  // Heatmap giorno × fascia oraria: view medie per slot di pubblicazione.
+  const heatCells = WEEKDAYS.map((_, di) =>
+    HOUR_BUCKETS.map((b) =>
+      averageWhere(
+        dated,
+        (v) => {
+          const d = new Date(v.create_time! * 1000);
+          return (
+            (d.getDay() + 6) % 7 === di &&
+            d.getHours() >= b.from &&
+            d.getHours() < b.to
+          );
+        },
+        (v) => v.view_count ?? 0,
+      ),
+    ),
+  );
+  const heatMax = Math.max(1, ...heatCells.flat());
+
   // Durata × performance: view medie per scaglioni di 10 secondi.
   const timed = videos.filter((v) => v.duration && v.duration > 0);
   const maxDuration = timed.reduce((max, v) => Math.max(max, v.duration!), 0);
@@ -257,6 +276,10 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
+      <Card title="Quando pubblicare · heatmap giorno × ora">
+        <Heatmap cells={heatCells} max={heatMax} />
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="View medie per durata">
           <BarChart bars={durationBars} color={CHART_COLORS.emerald} height={180} />
@@ -289,6 +312,50 @@ export default function AnalyticsPage() {
           format={(f) => formatPercent(f, 0)}
           hint="quanta parte delle visualizzazioni arriva dai 10 video migliori"
         />
+      </div>
+    </div>
+  );
+}
+
+/** Heatmap giorno × fascia oraria: verde intenso = slot con più view medie. */
+function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[560px]">
+        <div className="grid grid-cols-[2.5rem_repeat(12,1fr)] gap-1 text-[10px] text-zinc-500">
+          <span />
+          {HOUR_BUCKETS.map((b) => (
+            <span key={b.label} className="text-center tabular-nums">
+              {b.from}
+            </span>
+          ))}
+        </div>
+        {cells.map((row, di) => (
+          <div
+            key={WEEKDAYS[di]}
+            className="mt-1 grid grid-cols-[2.5rem_repeat(12,1fr)] items-center gap-1"
+          >
+            <span className="text-[10px] text-zinc-500">{WEEKDAYS[di]}</span>
+            {row.map((v, hi) => {
+              const intensity = v > 0 ? 0.12 + 0.88 * (v / max) : 0;
+              return (
+                <div
+                  key={HOUR_BUCKETS[hi].label}
+                  title={`${WEEKDAYS[di]} ${HOUR_BUCKETS[hi].label}: ${formatCompact(
+                    Math.round(v),
+                  )} view medie`}
+                  className="aspect-square rounded-[4px] border border-white/5"
+                  style={{
+                    backgroundColor:
+                      v > 0
+                        ? `rgba(37,244,238,${intensity})`
+                        : "rgba(255,255,255,0.02)",
+                  }}
+                />
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );

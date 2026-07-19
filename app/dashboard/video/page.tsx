@@ -14,7 +14,13 @@ import {
   ShareIcon,
   TrendUpIcon,
 } from "@/app/components/icons";
-import { videoEngagement, videoTitle } from "@/lib/metrics";
+import {
+  formatPercent,
+  shareRateTier,
+  videoEngagement,
+  videoShareRate,
+  videoTitle,
+} from "@/lib/metrics";
 import { useStats } from "../stats-context";
 import { ErrorBanner, Loading } from "../shared";
 
@@ -24,6 +30,7 @@ type SortKey =
   | "likes"
   | "comments"
   | "shares"
+  | "share"
   | "saved"
   | "engagement";
 
@@ -40,6 +47,7 @@ const COLUMNS: Column[] = [
   { key: "likes", label: "Mi piace", pick: (v) => v.like_count ?? 0, icon: HeartIcon, iconClass: "text-tt-pink" },
   { key: "comments", label: "Commenti", pick: (v) => v.comment_count ?? 0, icon: CommentIcon, iconClass: "text-tt-cyan" },
   { key: "shares", label: "Condiv.", pick: (v) => v.share_count ?? 0, icon: ShareIcon, iconClass: "text-tt-pink" },
+  { key: "share", label: "Share %", pick: videoShareRate, icon: ShareIcon, iconClass: "text-tt-cyan" },
   { key: "saved", label: "Salvati", pick: (v) => v.saved_count ?? 0, icon: BookmarkIcon, iconClass: "text-tt-cyan" },
   { key: "engagement", label: "Interaz.", pick: videoEngagement, icon: TrendUpIcon, iconClass: "text-tt-cyan" },
 ];
@@ -60,6 +68,7 @@ function exportVideosCsv(list: VideoStats[]): void {
     "mi_piace",
     "commenti",
     "condivisioni",
+    "share_rate_%",
     "salvati",
     "interazioni",
     "engagement_%",
@@ -74,6 +83,7 @@ function exportVideosCsv(list: VideoStats[]): void {
       v.like_count ?? 0,
       v.comment_count ?? 0,
       v.share_count ?? 0,
+      (videoShareRate(v) * 100).toFixed(2),
       v.saved_count ?? "",
       eng,
       rate.toFixed(1),
@@ -105,6 +115,27 @@ function ValueCell({ value }: { value: number | null }) {
       ) : (
         <FlashNumber value={value} />
       )}
+    </td>
+  );
+}
+
+const TIER_COLOR = {
+  high: "text-emerald-400",
+  mid: "text-amber-400",
+  low: "text-tt-pink",
+} as const;
+
+/** Cella share rate col semaforo: verde ≥3%, giallo 2-3%, rosso <2%. */
+function ShareCell({ rate }: { rate: number }) {
+  return (
+    <td className="px-3 py-2 text-right tabular-nums">
+      <span className={`inline-flex items-center gap-1.5 ${TIER_COLOR[shareRateTier(rate)]}`}>
+        <span
+          className="h-1.5 w-1.5 rounded-full bg-current"
+          aria-hidden="true"
+        />
+        <FlashNumber value={rate} format={(r) => formatPercent(r, 1)} />
+      </span>
     </td>
   );
 }
@@ -244,6 +275,7 @@ export default function VideoPage() {
                     <ValueCell value={v.like_count ?? 0} />
                     <ValueCell value={v.comment_count ?? 0} />
                     <ValueCell value={v.share_count ?? 0} />
+                    <ShareCell rate={videoShareRate(v)} />
                     <ValueCell value={v.saved_count ?? null} />
                     <ValueCell value={videoEngagement(v)} />
                   </tr>

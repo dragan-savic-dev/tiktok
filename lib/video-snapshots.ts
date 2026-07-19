@@ -2,6 +2,16 @@ import { ensureSchema, hasDb, sql } from "./db";
 import { DAY_MS, RETENTION_DAYS } from "./snapshots";
 import type { VideoStats } from "./types";
 
+/** Un punto della serie temporale di un singolo video. */
+export interface VideoPoint {
+  t: number;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saved: number | null;
+}
+
 // Serie temporale PER SINGOLO VIDEO: è il dato che l'API TikTok non espone e
 // che va accumulato nel tempo. Abilita la curva dello share rate, la velocità
 // (views/ora), il rilevamento ondate e le proiezioni della roadmap.
@@ -100,5 +110,33 @@ export async function recordVideoSnapshots(
     }
   } catch {
     // best-effort
+  }
+}
+
+/** Serie temporale di un singolo video (dal più vecchio), da `sinceMs` in poi. */
+export async function getVideoHistory(
+  openId: string,
+  videoId: string,
+  sinceMs: number,
+): Promise<VideoPoint[]> {
+  if (!hasDb()) return [];
+  try {
+    await ensureSchema();
+    const rows = (await sql!`
+      SELECT t, views, likes, comments, shares, saved
+      FROM video_snapshots
+      WHERE open_id = ${openId} AND video_id = ${videoId} AND t >= ${sinceMs}
+      ORDER BY t ASC
+    `) as Record<string, unknown>[];
+    return rows.map((r) => ({
+      t: Number(r.t),
+      views: Number(r.views ?? 0),
+      likes: Number(r.likes ?? 0),
+      comments: Number(r.comments ?? 0),
+      shares: Number(r.shares ?? 0),
+      saved: r.saved == null ? null : Number(r.saved),
+    }));
+  } catch {
+    return [];
   }
 }

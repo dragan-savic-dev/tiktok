@@ -206,7 +206,7 @@ export default function OverviewPage() {
       </div>
 
       {/* Medie per video */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
           label="Media view / video"
           value={perVideoAverage(totals.views, totals.videosCounted)}
@@ -214,6 +214,11 @@ export default function OverviewPage() {
         <StatTile
           label="Media like / video"
           value={perVideoAverage(totals.likes, totals.videosCounted)}
+        />
+        <StatTile
+          label="Share rate medio"
+          value={totals.views ? totals.shares / totals.views : 0}
+          format={(f) => formatPercent(f, 2)}
         />
         <StatTile label="Video pubblici" value={totals.videosCounted} exact />
       </div>
@@ -289,10 +294,13 @@ function StatTile({
   label,
   value,
   exact = false,
+  format,
 }: {
   label: string;
   value: number;
   exact?: boolean;
+  /** Formatter custom (es. percentuale): se presente, il valore non viene arrotondato. */
+  format?: (n: number) => string;
 }) {
   return (
     <div className="flex flex-col justify-center gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
@@ -301,8 +309,8 @@ function StatTile({
       </span>
       <span className="text-2xl font-bold text-white">
         <FlashNumber
-          value={Math.round(value)}
-          format={exact ? undefined : (n) => formatCompact(n)}
+          value={format ? value : Math.round(value)}
+          format={format ?? (exact ? undefined : (n) => formatCompact(n))}
         />
       </span>
     </div>

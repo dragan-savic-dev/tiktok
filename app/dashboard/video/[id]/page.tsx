@@ -7,6 +7,7 @@ import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
+import LineChart from "@/app/components/line-chart";
 import {
   BookmarkIcon,
   CloseIcon,
@@ -20,13 +21,27 @@ import {
 import {
   formatDuration,
   formatPercent,
+  shareRateTier,
   videoEngagementRate,
+  videoShareRate,
   videoTitle,
 } from "@/lib/metrics";
 import { useStats } from "../../stats-context";
 import { CHART_COLORS, ErrorBanner, Loading } from "../../shared";
 
 const REFRESH_MS = 5000;
+
+// Semaforo share rate (verde ≥3% / giallo 2-3% / rosso <2%).
+const TIER_TEXT = {
+  high: "text-emerald-400",
+  mid: "text-amber-400",
+  low: "text-tt-pink",
+} as const;
+const TIER_DOT = {
+  high: "bg-emerald-400",
+  mid: "bg-amber-400",
+  low: "bg-tt-pink",
+} as const;
 
 /**
  * Contatori freschi del singolo video via /api/video/[id] (video/query, TTL
@@ -231,6 +246,8 @@ export default function VideoDetailPage() {
   const accountRate = totals.views
     ? (totals.likes + totals.comments + totals.shares) / totals.views
     : 0;
+  const videoShare = videoShareRate(video);
+  const accountShare = totals.views ? totals.shares / totals.views : 0;
 
   // Ranking per visualizzazioni.
   const rankViews =
@@ -476,7 +493,7 @@ export default function VideoDetailPage() {
               {saved !== null && accountSaved !== null && (
                 <CompareRow label="Salvati" value={saved} average={accountSaved / count} />
               )}
-              <div className="mt-1 border-t border-white/5 pt-3">
+              <div className="mt-1 flex flex-col gap-2 border-t border-white/5 pt-3">
                 <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
                   <span className="truncate text-zinc-400">Engagement</span>
                   <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
@@ -486,18 +503,202 @@ export default function VideoDetailPage() {
                     <FlashNumber value={accountRate} format={(f) => formatPercent(f, 1)} />
                   </span>
                 </div>
+                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
+                  <span className="flex items-center gap-1.5 truncate text-zinc-400">
+                    Share rate
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${TIER_DOT[shareRateTier(videoShare)]}`}
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <span
+                    className={`w-16 text-right font-semibold tabular-nums sm:w-20 ${TIER_TEXT[shareRateTier(videoShare)]}`}
+                  >
+                    <FlashNumber value={videoShare} format={(f) => formatPercent(f, 2)} />
+                  </span>
+                  <span className="w-16 text-right tabular-nums text-zinc-500 sm:w-20">
+                    <FlashNumber value={accountShare} format={(f) => formatPercent(f, 2)} />
+                  </span>
+                </div>
               </div>
             </div>
           </Card>
         </div>
       </div>
 
+      <VideoTrend id={id} />
+
       <p className="text-xs text-zinc-600">
-        Statistiche attuali del video (aggiornate ogni 5 secondi). TikTok non
-        espone dati di audience o andamento nel tempo per singolo video tramite
-        la Display API.
+        Contatori attuali aggiornati ogni 5 secondi. L’andamento nel tempo è
+        ricostruito dagli snapshot che il sito registra (l’API TikTok non lo
+        espone per singolo video); si popola man mano.
       </p>
     </div>
+  );
+}
+
+interface TrendPoint {
+  t: number;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  saved: number | null;
+}
+
+/** Serie temporale del singolo video via /api/video/[id]/history (best-effort). */
+function useVideoHistory(
+  id: string,
+): { series: TrendPoint[]; dbEnabled: boolean } | null {
+  const [state, setState] = useState<{
+    series: TrendPoint[];
+    dbEnabled: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/video/${id}/history?days=7`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const body = await res.json();
+        if (!cancelled) {
+          setState({
+            series: Array.isArray(body?.series) ? (body.series as TrendPoint[]) : [],
+            dbEnabled: !!body?.dbEnabled,
+          });
+        }
+      } catch {
+        // best-effort
+      }
+    };
+    load();
+    const timer = setInterval(() => {
+      if (!document.hidden) load();
+    }, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [id]);
+
+  return state;
+}
+
+function TrendStat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400">
+        {label}
+      </span>
+      <span className="text-2xl font-bold text-white">{value}</span>
+      {hint && <span className="text-xs text-zinc-600">{hint}</span>}
+    </div>
+  );
+}
+
+/** Curve ricostruite dagli snapshot per singolo video: views e share rate. */
+function VideoTrend({ id }: { id: string }) {
+  const data = useVideoHistory(id);
+  if (!data) return null;
+  const { series, dbEnabled } = data;
+
+  if (!dbEnabled) {
+    return (
+      <Card title="Andamento nel tempo">
+        <p className="text-sm text-zinc-500">
+          Configura il database per registrare l’andamento nel tempo di questo
+          video.
+        </p>
+      </Card>
+    );
+  }
+  if (series.length < 2) {
+    return (
+      <Card title="Andamento nel tempo">
+        <p className="text-sm text-zinc-500">
+          Sto raccogliendo i dati: la curva compare dopo qualche rilevazione (uno
+          snapshot ogni ~5 minuti mentre il video è attivo).
+        </p>
+      </Card>
+    );
+  }
+
+  const fmtLabel = (t: number) =>
+    new Date(t).toLocaleString("it-IT", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  const viewsData = series.map((p) => ({ label: fmtLabel(p.t), value: p.views }));
+  const shareData = series.map((p) => ({
+    label: fmtLabel(p.t),
+    value: p.views ? p.shares / p.views : 0,
+  }));
+
+  // Velocità: views nell'ultima ora (ultimo valore meno quello ~1h prima).
+  const last = series[series.length - 1];
+  const hourAgo = last.t - 3_600_000;
+  let base = series[0];
+  for (const p of series) {
+    if (p.t <= hourAgo) base = p;
+    else break;
+  }
+  const velocity = Math.max(0, last.views - base.views);
+  const currentShare = last.views ? last.shares / last.views : 0;
+
+  return (
+    <Card title="Andamento nel tempo">
+      <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <TrendStat
+            label="Velocità · ultima ora"
+            value={<FlashNumber value={velocity} />}
+            hint="views nell’ultima ora"
+          />
+          <TrendStat
+            label="Share rate attuale"
+            value={
+              <span className={TIER_TEXT[shareRateTier(currentShare)]}>
+                <FlashNumber
+                  value={currentShare}
+                  format={(f) => formatPercent(f, 2)}
+                />
+              </span>
+            }
+            hint="condivisioni / views"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+            Visualizzazioni nel tempo
+          </h4>
+          <LineChart data={viewsData} color={CHART_COLORS.cyan} height={180} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+            Share rate nel tempo
+          </h4>
+          <LineChart
+            data={shareData}
+            color={CHART_COLORS.pink}
+            height={180}
+            formatValue={(f) => formatPercent(f, 1)}
+          />
+        </div>
+      </div>
+    </Card>
   );
 }
 

@@ -10,6 +10,23 @@ export function videoEngagementRate(v: VideoStats): number {
   return v.view_count ? videoEngagement(v) / v.view_count : 0;
 }
 
+/**
+ * Share rate = condivisioni / visualizzazioni (0..1). Sul profilo @ring_escape
+ * è la metrica che predice meglio gli hit: va isolata dall'engagement.
+ */
+export function videoShareRate(v: VideoStats): number {
+  return v.view_count ? (v.share_count ?? 0) / v.view_count : 0;
+}
+
+export type ShareTier = "high" | "mid" | "low";
+
+/** Semaforo share rate: verde ≥3% (hit), giallo 2-3% (medio), rosso <2%. */
+export function shareRateTier(rate: number): ShareTier {
+  if (rate >= 0.03) return "high";
+  if (rate >= 0.02) return "mid";
+  return "low";
+}
+
 /** Moltiplicatore rispetto a un riferimento, es. "1,8×". */
 export function formatMultiplier(value: number, reference: number): string {
   if (!reference) return "—";
