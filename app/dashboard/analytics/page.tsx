@@ -268,12 +268,14 @@ export default function AnalyticsPage() {
         <BarChart bars={engagementBars} color={CHART_COLORS.pink} />
       </Card>
 
-      {/* Quando pubblicare: heatmap + view medie per giorno, affiancate */}
+      {/* Quando pubblicare: heatmap + view medie per giorno, affiancate.
+          min-w-0 sugli item: senza, la heatmap (min-w interna) sforerebbe lo
+          schermo su mobile invece di scrollare dentro il suo contenitore. */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title={t("When to post · day × hour heatmap")}>
+        <Card title={t("When to post · day × hour heatmap")} className="min-w-0">
           <Heatmap cells={heatCells} max={heatMax} />
         </Card>
-        <Card title={t("Average views by publish day")}>
+        <Card title={t("Average views by publish day")} className="min-w-0">
           <BarChart bars={weekdayBars} color={CHART_COLORS.violet} height={240} />
         </Card>
       </div>
@@ -324,6 +326,9 @@ export default function AnalyticsPage() {
 /** Heatmap giorno × fascia oraria: verde intenso = slot con più view medie. */
 function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
   const t = useT();
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(
+    null,
+  );
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[520px]">
@@ -343,13 +348,19 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
             <span className="text-[10px] text-zinc-500">{t(WEEKDAYS[di])}</span>
             {row.map((v, hi) => {
               const intensity = v > 0 ? 0.12 + 0.88 * (v / max) : 0;
+              const label = `${t(WEEKDAYS[di])} ${HOUR_BUCKETS[hi].label} · ${formatCompact(
+                Math.round(v),
+              )} ${t("avg views")}`;
               return (
                 <div
                   key={HOUR_BUCKETS[hi].label}
-                  title={`${t(WEEKDAYS[di])} ${HOUR_BUCKETS[hi].label}: ${formatCompact(
-                    Math.round(v),
-                  )} ${t("avg views")}`}
-                  className="h-8 rounded-[4px] border border-white/5 sm:h-9"
+                  role="img"
+                  aria-label={label}
+                  onMouseMove={(e) =>
+                    setTip({ x: e.clientX, y: e.clientY, text: label })
+                  }
+                  onMouseLeave={() => setTip(null)}
+                  className="h-8 rounded-[4px] border border-white/5 transition-colors hover:border-white/25 sm:h-9"
                   style={{
                     backgroundColor:
                       v > 0
@@ -362,6 +373,14 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
           </div>
         ))}
       </div>
+      {tip && (
+        <div
+          style={{ position: "fixed", left: tip.x + 14, top: tip.y + 14 }}
+          className="pointer-events-none z-50 rounded-xl border border-white/10 bg-[#141414]/95 px-3 py-2 text-xs font-medium text-white shadow-xl backdrop-blur-sm"
+        >
+          {tip.text}
+        </div>
+      )}
     </div>
   );
 }
