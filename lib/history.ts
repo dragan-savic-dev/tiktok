@@ -186,6 +186,41 @@ export async function importSnapshots(
   return rows.length;
 }
 
+export interface HistoryStatus {
+  dbEnabled: boolean;
+  /** Epoch ms del primo/ultimo snapshot nel DB (null se vuoto o senza DB). */
+  firstAt: number | null;
+  lastT: number | null;
+  count: number;
+}
+
+/**
+ * Stato sintetico dello storico DB: primo/ultimo timestamp e conteggio. Serve al
+ * pulsante globale di sync per capire se il localStorage ha dati non ancora nel
+ * DB. Senza DB ritorna dbEnabled:false (il sync non ha destinazione).
+ */
+export async function getHistoryStatus(openId: string): Promise<HistoryStatus> {
+  if (!hasDb()) {
+    return { dbEnabled: false, firstAt: null, lastT: null, count: 0 };
+  }
+  try {
+    await ensureSchema();
+    const rows = (await sql!`
+      SELECT MIN(t) AS first, MAX(t) AS last, COUNT(*) AS count
+      FROM account_snapshots WHERE open_id = ${openId}
+    `) as { first: unknown; last: unknown; count: unknown }[];
+    const r = rows[0];
+    return {
+      dbEnabled: true,
+      firstAt: r?.first == null ? null : Number(r.first),
+      lastT: r?.last == null ? null : Number(r.last),
+      count: r?.count == null ? 0 : Number(r.count),
+    };
+  } catch {
+    return { dbEnabled: true, firstAt: null, lastT: null, count: 0 };
+  }
+}
+
 /** Costruisce la risposta storica per l'utente sull'intervallo richiesto. */
 export async function getHistory(
   openId: string,

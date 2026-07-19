@@ -54,6 +54,32 @@ export async function readSavedStore(
   return readFromFile(openId);
 }
 
+/** Upsert del conteggio di UN singolo video (non tocca gli altri). */
+export async function setSavedCount(
+  openId: string,
+  videoId: string,
+  count: number,
+): Promise<void> {
+  if (hasDb()) {
+    try {
+      await ensureSchema();
+      await sql!`
+        INSERT INTO video_saved (open_id, video_id, saved, updated_at)
+        VALUES (${openId}, ${videoId}, ${count}, now())
+        ON CONFLICT (open_id, video_id) DO UPDATE SET
+          saved = EXCLUDED.saved, updated_at = now()
+      `;
+    } catch {
+      // best-effort
+    }
+    return;
+  }
+  // Fallback filesystem: leggi la mappa, aggiorna una chiave, riscrivi.
+  const map = await readSavedStore(openId);
+  map[videoId] = count;
+  await writeSavedStore(openId, map);
+}
+
 /** Salva l'intera mappa dei "salvati" noti. Best-effort. */
 export function writeSavedStore(
   openId: string,

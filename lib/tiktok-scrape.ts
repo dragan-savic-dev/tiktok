@@ -1,4 +1,4 @@
-import { readSavedStore, writeSavedStore } from "./saved-store";
+import { readSavedStore, setSavedCount, writeSavedStore } from "./saved-store";
 import type { VideoStats } from "./types";
 
 // Il conteggio "salvati" (collectCount) non è esposto dalla Display API
@@ -48,6 +48,21 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Guardia anti-scrape-sporco: i "salvati" totali di un video non calano nel
+ * breve periodo. Un valore più basso del precedente è quasi sempre una lettura
+ * parziale/errata (il famoso -4922) → si tiene l'ultimo valido. Una lettura
+ * fallita (null) conserva anch'essa il precedente.
+ */
+function reconcileSaved(
+  prev: number | undefined,
+  fresh: number | null,
+): number | undefined {
+  if (fresh == null) return prev;
+  if (prev === undefined) return fresh;
+  return fresh >= prev ? fresh : prev;
+}
+
 async function fetchCollectCount(url: string): Promise<number | null> {
   try {
     const res = await fetch(url, {
@@ -71,22 +86,52 @@ async function fetchCollectCount(url: string): Promise<number | null> {
  * gate sulla completezza, così il dato compare appena c'è ed è sempre
  * coerente con i valori dei singoli video.
  */
-export async function getSavedCounts(
-  openId: string,
-  videos: VideoStats[],
-): Promise<SavedCounts> {
+/**
+ * Stato di rotazione in memoria per l'utente. Al primo accesso (cold start) lo
+ * reidrata dai conteggi persistiti (DB o filesystem): così i "salvati" già noti
+ * tornano subito disponibili (niente N/D). attemptedAt: 0 li mette in cima alla
+ * coda di refresh, così vengono comunque riletti col tempo.
+ */
+async function getState(openId: string): Promise<Map<string, VideoSavedState>> {
   let state = stateByUser.get(openId);
   if (!state) {
     state = new Map();
     stateByUser.set(openId, state);
-    // Reidrata dai conteggi persistiti su disco: dopo un cold start i "salvati"
-    // già noti tornano subito disponibili (niente N/D). attemptedAt: 0 li mette
-    // in cima alla coda di refresh, così vengono comunque riletti col tempo.
     const persisted = await readSavedStore(openId);
     for (const [id, count] of Object.entries(persisted)) {
       state.set(id, { count, attemptedAt: 0 });
     }
   }
+  return state;
+}
+
+/**
+ * Scraping ON-DEMAND dei "salvati" di un singolo video (pulsante manuale nella
+ * pagina del video). Aggiorna lo stato in memoria e lo store persistente, così
+ * il valore compare subito ed è coerente col prossimo /api/stats. Ritorna il
+ * conteggio letto, o l'ultimo noto se la lettura fallisce, o null.
+ */
+export async function scrapeVideoSaved(
+  openId: string,
+  video: VideoStats,
+): Promise<number | null> {
+  if (!video.share_url) return null;
+  const state = await getState(openId);
+  const fresh = await fetchCollectCount(video.share_url);
+  const resolved = reconcileSaved(state.get(video.id)?.count, fresh);
+  state.set(video.id, { count: resolved, attemptedAt: Date.now() });
+  if (resolved !== undefined) {
+    await setSavedCount(openId, video.id, resolved);
+    return resolved;
+  }
+  return null;
+}
+
+export async function getSavedCounts(
+  openId: string,
+  videos: VideoStats[],
+): Promise<SavedCounts> {
+  const state = await getState(openId);
 
   // Dimentica i video non più pubblici.
   const ids = new Set(videos.map((v) => v.id));
@@ -111,8 +156,8 @@ export async function getSavedCounts(
     );
     const now = Date.now();
     chunk.forEach((v, j) => {
-      // In caso di pagina illeggibile si conserva il valore precedente.
-      const count = results[j] ?? state.get(v.id)?.count;
+      // Guardia monotòna: cali = scrape sporco, si tiene l'ultimo valido.
+      const count = reconcileSaved(state.get(v.id)?.count, results[j]);
       state.set(v.id, { count, attemptedAt: now });
     });
   }

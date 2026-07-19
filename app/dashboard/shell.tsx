@@ -16,6 +16,7 @@ import {
 } from "@/app/components/icons";
 import InstallButton from "@/app/components/install-button";
 import LiveIndicator from "@/app/components/live-indicator";
+import SyncButton from "@/app/components/sync-button";
 import StatsProvider, { useStats } from "./stats-context";
 
 interface NavItem {
@@ -212,6 +213,7 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
               <h1 className="text-base font-semibold text-white sm:text-lg">{title}</h1>
             </div>
             <div className="flex items-center gap-3 sm:gap-4">
+              <SyncButton />
               <HeaderLive />
               <InstallButton compact />
             </div>

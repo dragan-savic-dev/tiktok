@@ -13,7 +13,7 @@ import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import FlashNumber from "@/app/components/flash-number";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
-import { readLocalSnapshots, syncLocalSnapshots } from "@/lib/local-history";
+import { readLocalSnapshots } from "@/lib/local-history";
 import { formatCompact } from "@/lib/metrics";
 import { computeDelta, DAY_MS, mergeSnapshots, toSeries } from "@/lib/snapshots";
 import { useStats } from "../stats-context";
@@ -91,6 +91,26 @@ function seriesDelta(
   return points.slice(1).map((p, i) => ({ label: p.label, value: p.value - points[i].value }));
 }
 
+/**
+ * Rende una serie non-decrescente (running max). I "salvati" non calano nel
+ * breve periodo: un tuffo è quasi sempre uno scrape sporco già registrato, così
+ * lo appiattiamo in visualizzazione (la guardia alla fonte evita i futuri).
+ */
+function monotonic(points: LinePoint[]): LinePoint[] {
+  let max = -Infinity;
+  return points.map((p) => {
+    max = Math.max(max, p.value);
+    return { ...p, value: max };
+  });
+}
+
+/** Variazione tra punti consecutivi di una serie già pronta. */
+function pointsDelta(points: LinePoint[]): BarDatum[] {
+  return points
+    .slice(1)
+    .map((p, i) => ({ label: p.label, value: p.value - points[i].value }));
+}
+
 /** Etichette dei bucket in cui è stato pubblicato un video (per i marcatori). */
 function publicationMarkers(
   videos: VideoStats[],
@@ -155,32 +175,18 @@ export default function GrowthPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const { stats } = useStats();
 
   // Su 7 giorni gli snapshot al minuto permettono la granularità oraria.
   const hourly = days === 7;
 
-  // Carica nel DB lo storico locale. Additivo/idempotente: NON svuota il locale,
-  // così la registrazione continua e puoi ripremere Sync quando vuoi.
-  const handleSync = async () => {
-    setSyncing(true);
-    setSyncMsg(null);
-    try {
-      const { imported, received } = await syncLocalSnapshots();
-      setSyncMsg(
-        imported > 0
-          ? `Sincronizzati ${imported} nuovi snapshot nel database (su ${received} locali).`
-          : `Database già aggiornato (${received} snapshot locali, nessuno nuovo).`,
-      );
-      setReloadKey((k) => k + 1);
-    } catch (err) {
-      setSyncMsg(err instanceof Error ? err.message : "Errore di sincronizzazione");
-    } finally {
-      setSyncing(false);
-    }
-  };
+  // Il sync ora è il pulsante globale nell'header: quando carica dati nel DB
+  // emette "tt:history-synced" e qui ricarichiamo lo storico.
+  useEffect(() => {
+    const onSynced = () => setReloadKey((k) => k + 1);
+    window.addEventListener("tt:history-synced", onSynced);
+    return () => window.removeEventListener("tt:history-synced", onSynced);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,7 +252,7 @@ export default function GrowthPage() {
   const enoughData = daily.length >= 2;
   const deltaMode = mode === "delta";
 
-  const savedSeries = seriesTotal(daily, (p) => p.saved);
+  const savedSeries = monotonic(seriesTotal(daily, (p) => p.saved));
   const availableLabels = new Set(daily.map((p) => bucketLabel(p.day)));
   const markers = publicationMarkers(stats?.videos ?? [], hourly, availableLabels);
 
@@ -325,19 +331,6 @@ export default function GrowthPage() {
               </button>
             ))}
           </div>
-          {history?.dbEnabled && localSnaps.length > 0 && (
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              title="Carica nel database gli snapshot salvati su questo dispositivo"
-              className="flex items-center gap-1.5 rounded-full border border-tt-cyan/40 bg-tt-cyan/10 px-3 py-1.5 text-xs font-medium text-tt-cyan transition-colors hover:bg-tt-cyan/20 disabled:opacity-40"
-            >
-              <TrendUpIcon className="h-3.5 w-3.5" />
-              {syncing
-                ? "Sincronizzo…"
-                : `Sincronizza dal telefono (${localSnaps.length})`}
-            </button>
-          )}
           <button
             onClick={() => exportCsv(daily)}
             disabled={daily.length === 0}
@@ -349,12 +342,6 @@ export default function GrowthPage() {
           </button>
         </div>
       </div>
-
-      {syncMsg && (
-        <p className="rounded-xl border border-tt-cyan/30 bg-tt-cyan/10 px-4 py-3 text-center text-sm text-tt-cyan">
-          {syncMsg}
-        </p>
-      )}
 
       {error && !history && (
         <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-300">
@@ -418,7 +405,15 @@ export default function GrowthPage() {
           </div>
           {savedSeries.length >= 2 && (
             <Card title="Salvati nel tempo">
-              {chart((p) => p.saved, CHART_COLORS.amber)}
+              {deltaMode ? (
+                <BarChart
+                  bars={pointsDelta(savedSeries)}
+                  color={CHART_COLORS.amber}
+                  formatValue={formatSigned}
+                />
+              ) : (
+                <LineChart data={savedSeries} color={CHART_COLORS.amber} />
+              )}
             </Card>
           )}
         </>
