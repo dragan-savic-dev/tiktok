@@ -105,7 +105,7 @@ export async function getStoredToken(
   }
 }
 
-/** Tutti i token salvati (per il ciclo di raccolta). */
+/** Tutti i token salvati ancora validi (per il ciclo di raccolta). */
 export async function listUserTokens(): Promise<StoredUserToken[]> {
   if (hasDb()) {
     try {

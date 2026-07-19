@@ -35,11 +35,8 @@ export async function setAuthCookies(token: TokenResponse): Promise<void> {
   store.set(OPEN_ID_COOKIE, token.open_id, cookieOptions(token.refresh_expires_in));
 
   // Persiste l'intero token (access + refresh) nello store server-side, fonte
-  // unica del rinnovo per cron e dashboard. Atteso (non fire-and-forget): su
-  // Vercel la funzione può congelarsi dopo la risposta, e questo salvataggio è
-  // ciò che semina il refresh token su Neon per la raccolta di Hetzner.
-  // saveFullToken ingoia i suoi errori, quindi l'await non fa mai fallire il login.
-  await persistToken(token);
+  // unica del rinnovo per cron e dashboard (best-effort).
+  void persistToken(token);
 }
 
 export async function clearAuthCookies(): Promise<void> {
