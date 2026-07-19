@@ -1,5 +1,7 @@
 "use client";
 
+import { numberLocale } from "@/lib/i18n/format";
+
 // Tipizzazione locale e minimale delle props che Recharts passa al contenuto
 // custom del Tooltip: evita di dipendere dai tipi interni della libreria.
 interface TooltipPayloadEntry {
@@ -14,7 +16,7 @@ export default function ChartTooltip({
   active,
   payload,
   label,
-  formatValue = (n) => n.toLocaleString("it-IT"),
+  formatValue = (n) => n.toLocaleString(numberLocale()),
 }: {
   active?: boolean;
   payload?: ReadonlyArray<TooltipPayloadEntry>;

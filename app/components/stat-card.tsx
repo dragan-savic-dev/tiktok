@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import DeltaBadge from "./delta-badge";
 import FlashNumber from "./flash-number";
+import { useT } from "./locale-provider";
 
 export default function StatCard({
   label,
@@ -20,6 +21,7 @@ export default function StatCard({
   accent?: "cyan" | "pink";
   className?: string;
 }) {
+  const t = useT();
   return (
     <div
       className={`flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 ${className}`}
@@ -37,7 +39,7 @@ export default function StatCard({
         <span className="relative inline-flex items-end text-white">
           {value === null ? (
             <span className="text-lg font-semibold leading-none text-zinc-500 sm:text-2xl">
-              N/D
+              {t("N/A")}
             </span>
           ) : (
             <FlashNumber value={value} className="text-lg font-semibold sm:text-2xl" />

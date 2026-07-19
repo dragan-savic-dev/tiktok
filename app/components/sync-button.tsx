@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { readLocalSnapshots, syncLocalSnapshots } from "@/lib/local-history";
 import { RefreshIcon } from "./icons";
+import { useT } from "./locale-provider";
 
 // Pulsante GLOBALE di sync (header dashboard). Confronta lo storico locale
 // (localStorage) con lo stato del DB e compare solo quando il locale ha dati
@@ -37,6 +38,7 @@ function computeHasNew(status: Status): boolean {
 }
 
 export default function SyncButton() {
+  const t = useT();
   const [enabled, setEnabled] = useState(false);
   const [hasNew, setHasNew] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -84,12 +86,12 @@ export default function SyncButton() {
     setMsg(null);
     try {
       const { imported } = await syncLocalSnapshots();
-      setMsg(imported > 0 ? `+${imported} nel DB` : "già aggiornato");
+      setMsg(imported > 0 ? `+${imported} ${t("to DB")}` : t("already up to date"));
       // Avvisa la pagina Crescita (se aperta) di ricaricare lo storico.
       window.dispatchEvent(new CustomEvent("tt:history-synced"));
       await check();
     } catch {
-      setMsg("errore sync");
+      setMsg(t("sync error"));
     } finally {
       setSyncing(false);
     }
@@ -102,12 +104,12 @@ export default function SyncButton() {
     <button
       onClick={handleSync}
       disabled={syncing}
-      title="Sincronizza nel database gli snapshot salvati su questo dispositivo"
+      title={t("Sync to the database the snapshots saved on this device")}
       className="flex items-center gap-1.5 rounded-full border border-tt-cyan/40 bg-tt-cyan/10 px-3 py-1.5 text-xs font-medium text-tt-cyan transition-colors hover:bg-tt-cyan/20 disabled:opacity-50"
     >
       <RefreshIcon className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
       <span className="hidden sm:inline">
-        {syncing ? "Sincronizzo…" : msg ?? "Sincronizza"}
+        {syncing ? t("Syncing…") : msg ?? t("Sync")}
       </span>
       {hasNew && !syncing && !msg && (
         <span className="h-1.5 w-1.5 rounded-full bg-tt-pink" aria-hidden="true" />

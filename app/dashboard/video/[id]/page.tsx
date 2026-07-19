@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
+import { useT } from "@/app/components/locale-provider";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
 import LineChart from "@/app/components/line-chart";
@@ -104,19 +105,20 @@ function MetricTile({
    */
   percentOfViews?: number | null;
 }) {
+  const t = useT();
   return (
     <div
       className={`flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-4 ${className}`}
     >
       <div className="flex items-center justify-between">
         <span className="truncate text-[10px] font-medium uppercase tracking-widest text-zinc-400 sm:text-xs">
-          {label}
+          {t(label)}
         </span>
         <span className="shrink-0 text-tt-cyan">{icon}</span>
       </div>
       <span className="flex items-baseline gap-1.5 text-xl font-semibold text-white sm:text-2xl">
         {value === null ? (
-          <span className="text-zinc-500">N/D</span>
+          <span className="text-zinc-500">{t("N/A")}</span>
         ) : (
           <FlashNumber value={value} />
         )}
@@ -143,9 +145,10 @@ function CompareRow({
   value: number;
   average: number;
 }) {
+  const t = useT();
   return (
     <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 gap-y-1 text-sm sm:gap-x-3">
-      <span className="truncate text-zinc-400">{label}</span>
+      <span className="truncate text-zinc-400">{t(label)}</span>
       <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
         <FlashNumber value={value} />
       </span>
@@ -157,6 +160,7 @@ function CompareRow({
 }
 
 export default function VideoDetailPage() {
+  const t = useT();
   const params = useParams();
   const id = String(params.id);
   const { stats, error } = useStats();
@@ -181,12 +185,12 @@ export default function VideoDetailPage() {
       }
       if (typeof body.saved === "number") {
         setManualSaved(body.saved);
-        setScrapeMsg("Salvati aggiornati.");
+        setScrapeMsg(t("Saves updated."));
       } else {
-        setScrapeMsg("Scraping non riuscito, riprova tra poco.");
+        setScrapeMsg(t("Scraping failed, try again shortly."));
       }
     } catch (err) {
-      setScrapeMsg(err instanceof Error ? err.message : "Errore durante lo scraping");
+      setScrapeMsg(err instanceof Error ? err.message : t("Error during scraping"));
     } finally {
       setScraping(false);
     }
@@ -196,7 +200,7 @@ export default function VideoDetailPage() {
     return (
       <>
         {error && <ErrorBanner message={error} />}
-        <Loading label="Carico il video…" />
+        <Loading label={t("Loading the video…")} />
       </>
     );
   }
@@ -210,12 +214,12 @@ export default function VideoDetailPage() {
   if (!video) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <p className="text-zinc-400">Video non trovato.</p>
+        <p className="text-zinc-400">{t("Video not found.")}</p>
         <Link
           href="/dashboard/video"
           className="rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-200 hover:border-tt-cyan/60 hover:text-white"
         >
-          ← Tutti i video
+          {t("← All videos")}
         </Link>
       </div>
     );
@@ -254,14 +258,12 @@ export default function VideoDetailPage() {
     [...videos].sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0)).findIndex((v) => v.id === id) +
     1;
 
-  const per1k = (n: number) => (views ? (n / views) * 1000 : 0);
-
   const interactions = [
-    { label: "Mi piace", value: likes, color: CHART_COLORS.pink },
-    { label: "Commenti", value: comments, color: CHART_COLORS.cyan },
-    { label: "Condivisioni", value: shares, color: CHART_COLORS.violet },
+    { label: "Likes", value: likes, color: CHART_COLORS.pink },
+    { label: "Comments", value: comments, color: CHART_COLORS.cyan },
+    { label: "Shares", value: shares, color: CHART_COLORS.violet },
     ...(saved !== null
-      ? [{ label: "Salvati", value: saved, color: CHART_COLORS.amber }]
+      ? [{ label: "Saves", value: saved, color: CHART_COLORS.amber }]
       : []),
   ];
   const duration = formatDuration(video.duration);
@@ -275,7 +277,7 @@ export default function VideoDetailPage() {
         href="/dashboard/video"
         className="inline-flex w-fit items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-white"
       >
-        ← Tutti i video
+        {t("← All videos")}
       </Link>
 
       {/* Intestazione: copertina + meta */}
@@ -300,7 +302,7 @@ export default function VideoDetailPage() {
               />
               <button
                 onClick={() => setPlaying(false)}
-                aria-label="Chiudi il player"
+                aria-label={t("Close the player")}
                 className="absolute right-2 top-2 rounded-full bg-black/70 p-1.5 text-white transition-colors hover:bg-black"
               >
                 <CloseIcon className="h-4 w-4" />
@@ -322,7 +324,7 @@ export default function VideoDetailPage() {
               )}
               <button
                 onClick={() => setPlaying(true)}
-                aria-label="Riproduci il video"
+                aria-label={t("Play the video")}
                 className="group absolute inset-0 grid place-items-center transition-colors hover:bg-black/30"
               >
                 <PlayIcon className="h-10 w-10 text-white opacity-0 drop-shadow-lg transition-opacity group-hover:opacity-100" />
@@ -338,14 +340,14 @@ export default function VideoDetailPage() {
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-2.5">
           <h1 className="text-lg font-bold text-white sm:text-xl">{videoTitle(video)}</h1>
           <span className="w-fit rounded-full border border-tt-cyan/30 bg-tt-cyan/10 px-2.5 py-0.5 text-xs font-medium text-tt-cyan">
-            #<FlashNumber value={rankViews} /> per visualizzazioni
+            #<FlashNumber value={rankViews} /> {t("by views")}
           </span>
           {video.video_description && (
             <p className="line-clamp-2 text-sm text-zinc-400">{video.video_description}</p>
           )}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
-            {date && <span>Pubblicato il {date}</span>}
-            {duration && <span>Durata {duration}</span>}
+            {date && <span>{t("Published on")} {date}</span>}
+            {duration && <span>{t("Duration")} {duration}</span>}
           </div>
           {video.share_url && (
             <a
@@ -355,7 +357,7 @@ export default function VideoDetailPage() {
               className="mt-1 inline-flex w-fit items-center gap-2 rounded-full bg-tt-pink px-4 py-2 text-sm font-semibold text-white transition-all hover:scale-105"
             >
               <PlayIcon className="h-4 w-4" />
-              Apri su TikTok
+              {t("Open on TikTok")}
             </a>
           )}
         </div>
@@ -364,31 +366,31 @@ export default function VideoDetailPage() {
       {/* Metriche */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <MetricTile
-          label="Spettatori"
+          label="Viewers"
           value={views}
           icon={<EyeIcon className="h-4 w-4" />}
           className="col-span-2 lg:col-span-1"
         />
         <MetricTile
-          label="Mi piace"
+          label="Likes"
           value={likes}
           icon={<HeartIcon className="h-4 w-4" />}
           percentOfViews={views ? likes / views : null}
         />
         <MetricTile
-          label="Commenti"
+          label="Comments"
           value={comments}
           icon={<CommentIcon className="h-4 w-4" />}
           percentOfViews={views ? comments / views : null}
         />
         <MetricTile
-          label="Condivisioni"
+          label="Shares"
           value={shares}
           icon={<ShareIcon className="h-4 w-4" />}
           percentOfViews={views ? shares / views : null}
         />
         <MetricTile
-          label="Salvati"
+          label="Saves"
           value={saved}
           icon={<BookmarkIcon className="h-4 w-4" />}
           percentOfViews={views && saved !== null ? saved / views : null}
@@ -400,18 +402,18 @@ export default function VideoDetailPage() {
         <button
           onClick={handleScrape}
           disabled={scraping}
-          title="Rileggi ora i 'salvati' di questo video dalla pagina pubblica (scraping)"
+          title={t("Reread this video's saves now from the public page (scraping)")}
           className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-tt-cyan/60 hover:text-white disabled:opacity-50"
         >
           <RefreshIcon className={`h-4 w-4 ${scraping ? "animate-spin" : ""}`} />
-          {scraping ? "Aggiorno salvati…" : "Aggiorna salvati (scraping)"}
+          {scraping ? t("Refreshing saves…") : t("Refresh saves (scraping)")}
         </button>
         {scrapeMsg && <span className="text-xs text-zinc-500">{scrapeMsg}</span>}
       </div>
 
       {/* Coinvolgimento */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Coinvolgimento">
+        <Card title={t("Engagement")}>
           <div className="flex flex-col items-center gap-5">
             <DonutChart
               segments={interactions}
@@ -421,7 +423,7 @@ export default function VideoDetailPage() {
                     <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
                   </span>
                   <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-                    engagement
+                    {t("engagement")}
                   </span>
                 </>
               }
@@ -435,7 +437,7 @@ export default function VideoDetailPage() {
                       style={{ backgroundColor: i.color }}
                       aria-hidden="true"
                     />
-                    <span className="text-zinc-400">{i.label}</span>
+                    <span className="text-zinc-400">{t(i.label)}</span>
                   </div>
                   <span className="w-14 text-right tabular-nums text-zinc-500">
                     <FlashNumber
@@ -452,50 +454,26 @@ export default function VideoDetailPage() {
           </div>
         </Card>
 
-        <div className="flex flex-col gap-4 lg:col-span-2">
-          <Card title="Intensità · ogni 1.000 visualizzazioni">
-            {views >= 1000 ? (
-              <div
-                className={`grid gap-4 ${
-                  saved !== null ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
-                }`}
-              >
-                <Rate1k label="Mi piace" value={per1k(likes)} color={CHART_COLORS.pink} />
-                <Rate1k label="Commenti" value={per1k(comments)} color={CHART_COLORS.cyan} />
-                <Rate1k label="Condivisioni" value={per1k(shares)} color={CHART_COLORS.violet} />
-                {saved !== null && (
-                  <Rate1k label="Salvati" value={per1k(saved)} color={CHART_COLORS.amber} />
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-1 py-6 text-center">
-                <p className="text-sm text-zinc-400">
-                  Disponibile al raggiungimento di 1.000 visualizzazioni.
-                </p>
-                <p className="text-xs text-zinc-600">
-                  Mancano <FlashNumber value={1000 - views} /> visualizzazioni.
-                </p>
-              </div>
-            )}
-          </Card>
-
-          <Card title="Confronto con la media del profilo">
+        <Card
+          title={t("Compared to profile average")}
+          className="lg:col-span-2"
+        >
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 text-[10px] uppercase tracking-wider text-zinc-500">
                 <span />
-                <span className="w-16 text-right sm:w-20">Questo</span>
-                <span className="w-16 text-right sm:w-20">Media</span>
+                <span className="w-16 text-right sm:w-20">{t("This")}</span>
+                <span className="w-16 text-right sm:w-20">{t("Average")}</span>
               </div>
-              <CompareRow label="Visualizzazioni" value={views} average={avg.views} />
-              <CompareRow label="Mi piace" value={likes} average={avg.likes} />
-              <CompareRow label="Commenti" value={comments} average={avg.comments} />
-              <CompareRow label="Condivisioni" value={shares} average={avg.shares} />
+              <CompareRow label="Views" value={views} average={avg.views} />
+              <CompareRow label="Likes" value={likes} average={avg.likes} />
+              <CompareRow label="Comments" value={comments} average={avg.comments} />
+              <CompareRow label="Shares" value={shares} average={avg.shares} />
               {saved !== null && accountSaved !== null && (
-                <CompareRow label="Salvati" value={saved} average={accountSaved / count} />
+                <CompareRow label="Saves" value={saved} average={accountSaved / count} />
               )}
               <div className="mt-1 flex flex-col gap-2 border-t border-white/5 pt-3">
                 <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
-                  <span className="truncate text-zinc-400">Engagement</span>
+                  <span className="truncate text-zinc-400">{t("Engagement")}</span>
                   <span className="w-16 text-right font-semibold tabular-nums text-white sm:w-20">
                     <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
                   </span>
@@ -505,7 +483,7 @@ export default function VideoDetailPage() {
                 </div>
                 <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-2 text-sm sm:gap-x-3">
                   <span className="flex items-center gap-1.5 truncate text-zinc-400">
-                    Share rate
+                    {t("Share rate")}
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${TIER_DOT[shareRateTier(videoShare)]}`}
                       aria-hidden="true"
@@ -523,15 +501,14 @@ export default function VideoDetailPage() {
               </div>
             </div>
           </Card>
-        </div>
       </div>
 
       <VideoTrend id={id} />
 
       <p className="text-xs text-zinc-600">
-        Contatori attuali aggiornati ogni 5 secondi. L’andamento nel tempo è
-        ricostruito dagli snapshot che il sito registra (l’API TikTok non lo
-        espone per singolo video); si popola man mano.
+        {t(
+          "Current counters updated every 5 seconds. The trend over time is reconstructed from the snapshots the site records (the TikTok API does not expose it per individual video); it populates gradually.",
+        )}
       </p>
     </div>
   );
@@ -596,39 +573,43 @@ function TrendStat({
   value: ReactNode;
   hint?: string;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400">
-        {label}
+        {t(label)}
       </span>
       <span className="text-2xl font-bold text-white">{value}</span>
-      {hint && <span className="text-xs text-zinc-600">{hint}</span>}
+      {hint && <span className="text-xs text-zinc-600">{t(hint)}</span>}
     </div>
   );
 }
 
 /** Curve ricostruite dagli snapshot per singolo video: views e share rate. */
 function VideoTrend({ id }: { id: string }) {
+  const t = useT();
   const data = useVideoHistory(id);
   if (!data) return null;
   const { series, dbEnabled } = data;
 
   if (!dbEnabled) {
     return (
-      <Card title="Andamento nel tempo">
+      <Card title={t("Trend over time")}>
         <p className="text-sm text-zinc-500">
-          Configura il database per registrare l’andamento nel tempo di questo
-          video.
+          {t(
+            "Configure the database to record this video's trend over time.",
+          )}
         </p>
       </Card>
     );
   }
   if (series.length < 2) {
     return (
-      <Card title="Andamento nel tempo">
+      <Card title={t("Trend over time")}>
         <p className="text-sm text-zinc-500">
-          Sto raccogliendo i dati: la curva compare dopo qualche rilevazione (uno
-          snapshot ogni ~5 minuti mentre il video è attivo).
+          {t(
+            "Collecting data: the curve appears after a few readings (one snapshot every ~5 minutes while the video is active).",
+          )}
         </p>
       </Card>
     );
@@ -659,16 +640,16 @@ function VideoTrend({ id }: { id: string }) {
   const currentShare = last.views ? last.shares / last.views : 0;
 
   return (
-    <Card title="Andamento nel tempo">
+    <Card title={t("Trend over time")}>
       <div className="flex flex-col gap-5">
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <TrendStat
-            label="Velocità · ultima ora"
+            label="Speed · last hour"
             value={<FlashNumber value={velocity} />}
-            hint="views nell’ultima ora"
+            hint="views in the last hour"
           />
           <TrendStat
-            label="Share rate attuale"
+            label="Current share rate"
             value={
               <span className={TIER_TEXT[shareRateTier(currentShare)]}>
                 <FlashNumber
@@ -677,18 +658,18 @@ function VideoTrend({ id }: { id: string }) {
                 />
               </span>
             }
-            hint="condivisioni / views"
+            hint="shares / views"
           />
         </div>
         <div className="flex flex-col gap-2">
           <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-            Visualizzazioni nel tempo
+            {t("Views over time")}
           </h4>
           <LineChart data={viewsData} color={CHART_COLORS.cyan} height={180} />
         </div>
         <div className="flex flex-col gap-2">
           <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-            Share rate nel tempo
+            {t("Share rate over time")}
           </h4>
           <LineChart
             data={shareData}
@@ -702,19 +683,3 @@ function VideoTrend({ id }: { id: string }) {
   );
 }
 
-function Rate1k({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="flex flex-col items-center gap-1 text-center">
-      <span className="text-2xl font-bold text-white">
-        <FlashNumber
-          value={value}
-          format={(n) => n.toLocaleString("it-IT", { maximumFractionDigits: 1 })}
-        />
-      </span>
-      <span className="flex items-center gap-1.5 text-xs text-zinc-500">
-        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-        {label}
-      </span>
-    </div>
-  );
-}

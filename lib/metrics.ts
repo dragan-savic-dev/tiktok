@@ -1,3 +1,4 @@
+import { numberLocale } from "./i18n/format";
 import type { StatsResponse, VideoStats } from "./types";
 
 /** Interazioni totali (like + commenti + condivisioni) su un video. */
@@ -92,16 +93,16 @@ export function topVideosBy(
 
 /** Percentuale (0..100) formattata con al massimo `digits` decimali. */
 export function formatPercent(fraction: number, digits = 1): string {
-  return `${(fraction * 100).toLocaleString("it-IT", {
+  return `${(fraction * 100).toLocaleString(numberLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: digits,
   })}%`;
 }
 
-/** Numero compatto stile 12,3k / 1,2M per etichette strette. */
+/** Numero compatto stile 12.3k / 1.2M per etichette strette (nel locale corrente). */
 export function formatCompact(value: number | null): string {
-  if (value === null || value === undefined) return "N/D";
-  return value.toLocaleString("it-IT", {
+  if (value === null || value === undefined) return "—";
+  return value.toLocaleString(numberLocale(), {
     notation: "compact",
     maximumFractionDigits: 1,
   });

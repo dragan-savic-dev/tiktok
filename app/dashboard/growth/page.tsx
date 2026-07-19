@@ -18,12 +18,13 @@ import { formatCompact } from "@/lib/metrics";
 import { computeDelta, DAY_MS, mergeSnapshots, toSeries } from "@/lib/snapshots";
 import { useStats } from "../stats-context";
 import { CHART_COLORS, Loading } from "../shared";
+import { useT } from "@/app/components/locale-provider";
 
 const RANGES = [
-  { days: 7, label: "7 giorni" },
-  { days: 30, label: "30 giorni" },
-  { days: 90, label: "90 giorni" },
-  { days: 120, label: "120 giorni" },
+  { days: 7, label: "7 days" },
+  { days: 30, label: "30 days" },
+  { days: 90, label: "90 days" },
+  { days: 120, label: "120 days" },
 ];
 
 /** "2026-07-13" -> "13/07"; "2026-07-13 14" (bucket orario) -> "13/07 14:00" */
@@ -45,6 +46,7 @@ function toneClass(n: number | null): string {
 }
 
 function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
+  const t = useT();
   return (
     <Card title={label} bodyClassName="flex items-end justify-between gap-4 p-4 sm:p-5">
       <div className="flex flex-col">
@@ -55,7 +57,7 @@ function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
             <FlashNumber value={delta.today} format={formatSigned} />
           )}
         </span>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500">oggi</span>
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500">{t("today")}</span>
       </div>
       <div className="flex flex-col items-end">
         <span className={`text-lg font-semibold ${toneClass(delta.week)}`}>
@@ -65,7 +67,7 @@ function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
             <FlashNumber value={delta.week} format={formatSigned} />
           )}
         </span>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500">7 giorni</span>
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500">{t("7 days")}</span>
       </div>
     </Card>
   );
@@ -168,6 +170,7 @@ function exportCsv(daily: DailyPoint[]): void {
 }
 
 export default function GrowthPage() {
+  const t = useT();
   const [days, setDays] = useState(30);
   const [mode, setMode] = useState<"total" | "delta">("total");
   const [history, setHistory] = useState<HistoryResponse | null>(null);
@@ -210,7 +213,7 @@ export default function GrowthPage() {
           setError(null);
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Errore di rete");
+        if (!cancelled) setError(err instanceof Error ? err.message : t("Network error"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -224,9 +227,9 @@ export default function GrowthPage() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [days, reloadKey]);
+  }, [days, reloadKey, t]);
 
-  if (loading && !history) return <Loading label="Carico lo storico…" />;
+  if (loading && !history) return <Loading label={t("Loading history…")} />;
 
   // Unione delle due fonti: snapshot del server (quando il suo storico esiste)
   // e snapshot locali del browser. Serie e delta si calcolano sul totale.
@@ -292,8 +295,9 @@ export default function GrowthPage() {
       {/* Selettore intervallo + modalità */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-500">
-          Andamento reale nel tempo: gli snapshot si salvano nel tuo browser
-          mentre usi l’app.
+          {t(
+            "Real trend over time: snapshots are saved in your browser while you use the app.",
+          )}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
@@ -314,8 +318,8 @@ export default function GrowthPage() {
           <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
             {(
               [
-                { key: "total", label: "Totale" },
-                { key: "delta", label: hourly ? "Variazione/ora" : "Variazione/giorno" },
+                { key: "total", label: t("Total") },
+                { key: "delta", label: hourly ? t("Change/hour") : t("Change/day") },
               ] as const
             ).map((m) => (
               <button
@@ -334,7 +338,7 @@ export default function GrowthPage() {
           <button
             onClick={() => exportCsv(daily)}
             disabled={daily.length === 0}
-            title="Esporta lo storico in CSV"
+            title={t("Export history as CSV")}
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-tt-cyan/60 hover:text-white disabled:opacity-40 disabled:hover:border-white/10 disabled:hover:text-zinc-300"
           >
             <DownloadIcon className="h-3.5 w-3.5" />
@@ -345,19 +349,19 @@ export default function GrowthPage() {
 
       {error && !history && (
         <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-center text-sm text-amber-300">
-          Non riesco a leggere lo storico: {error}
+          {t("Can’t read history:")} {error}
         </p>
       )}
 
       {/* Delta oggi / 7 giorni su tutte le metriche */}
       {count > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <DeltaStat label="Follower" delta={deltas.followers} />
-          <DeltaStat label="Visualizzazioni" delta={deltas.views} />
-          <DeltaStat label="Mi piace" delta={deltas.likes} />
-          <DeltaStat label="Commenti" delta={deltas.comments} />
-          <DeltaStat label="Condivisioni" delta={deltas.shares} />
-          <DeltaStat label="Salvati" delta={deltas.saved} />
+          <DeltaStat label={t("Followers")} delta={deltas.followers} />
+          <DeltaStat label={t("Views")} delta={deltas.views} />
+          <DeltaStat label={t("Likes")} delta={deltas.likes} />
+          <DeltaStat label={t("Comments")} delta={deltas.comments} />
+          <DeltaStat label={t("Shares")} delta={deltas.shares} />
+          <DeltaStat label={t("Saves")} delta={deltas.saved} />
         </div>
       )}
 
@@ -366,45 +370,45 @@ export default function GrowthPage() {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400">
           <TrendUpIcon className="h-4 w-4 shrink-0 text-tt-cyan" />
           <span>
-            Al ritmo degli ultimi 7 giorni (
+            {t("At the pace of the last 7 days (")}
             <span className="font-semibold text-emerald-400">
               +<FlashNumber value={Math.round(milestone.perDay)} />
             </span>
-            /giorno) raggiungi{" "}
+            {t("/day) you’ll reach")}{" "}
             <span className="font-semibold text-white">
               <FlashNumber value={milestone.target} format={formatCompact} />
             </span>{" "}
-            follower tra circa{" "}
+            {t("followers in about")}{" "}
             <span className="font-semibold text-white">
               <FlashNumber value={milestone.daysLeft} />
             </span>{" "}
-            giorni.
+            {t("days.")}
           </span>
         </div>
       )}
 
       {enoughData ? (
         <>
-          <Card title={deltaMode ? "Follower guadagnati" : "Crescita follower"}>
+          <Card title={deltaMode ? t("Followers gained") : t("Follower growth")}>
             {chart((p) => p.followers, CHART_COLORS.pink)}
           </Card>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card
-              title="Visualizzazioni nel tempo"
+              title={t("Views over time")}
               action={
                 !deltaMode && markers.length > 0 ? (
                   <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-                    <span className="text-tt-pink">┆</span> pubblicazioni
+                    <span className="text-tt-pink">┆</span> {t("publications")}
                   </span>
                 ) : undefined
               }
             >
               {chart((p) => p.views, CHART_COLORS.cyan, true)}
             </Card>
-            <Card title="Mi piace nel tempo">{chart((p) => p.likes, CHART_COLORS.violet)}</Card>
+            <Card title={t("Likes over time")}>{chart((p) => p.likes, CHART_COLORS.violet)}</Card>
           </div>
           {savedSeries.length >= 2 && (
-            <Card title="Salvati nel tempo">
+            <Card title={t("Saves over time")}>
               {deltaMode ? (
                 <BarChart
                   bars={pointsDelta(savedSeries)}
@@ -422,17 +426,18 @@ export default function GrowthPage() {
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <TrendUpIcon className="h-10 w-10 text-zinc-600" />
             <p className="max-w-md text-sm text-zinc-400">
-              Sto raccogliendo i dati. Le statistiche vengono salvate nel tuo
-              browser (e sul server) mentre usi l’app, una foto al minuto:
-              servono almeno due momenti diversi per tracciare la crescita.
+              {t(
+                "Collecting data. Statistics are saved in your browser (and on the server) while you use the app, one snapshot per minute: at least two different moments are needed to track growth.",
+              )}
             </p>
             <p className="text-xs text-zinc-600">
               {count ? (
                 <>
-                  <FlashNumber value={count} /> snapshot finora — torna più tardi.
+                  <FlashNumber value={count} />{" "}
+                  {t("snapshots so far — come back later.")}
                 </>
               ) : (
-                "Lascia aperta la dashboard e torna più tardi."
+                t("Leave the dashboard open and come back later.")
               )}
             </p>
           </div>

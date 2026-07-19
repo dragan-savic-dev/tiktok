@@ -15,7 +15,9 @@ import {
   VideoIcon,
 } from "@/app/components/icons";
 import InstallButton from "@/app/components/install-button";
+import LanguageSwitcher from "@/app/components/language-switcher";
 import LiveIndicator from "@/app/components/live-indicator";
+import { useT } from "@/app/components/locale-provider";
 import SyncButton from "@/app/components/sync-button";
 import StatsProvider, { useStats } from "./stats-context";
 
@@ -28,10 +30,10 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Panoramica", icon: GridIcon, exact: true },
-  { href: "/dashboard/growth", label: "Crescita", icon: TrendUpIcon },
-  { href: "/dashboard/video", label: "Video", icon: VideoIcon },
-  { href: "/dashboard/analytics", label: "Analisi", icon: ChartIcon },
+  { href: "/dashboard", label: "Overview", icon: GridIcon, exact: true },
+  { href: "/dashboard/growth", label: "Growth", icon: TrendUpIcon },
+  { href: "/dashboard/video", label: "Videos", icon: VideoIcon },
+  { href: "/dashboard/analytics", label: "Analytics", icon: ChartIcon },
 ];
 
 function isActive(pathname: string, item: NavItem): boolean {
@@ -41,6 +43,7 @@ function isActive(pathname: string, item: NavItem): boolean {
 /** Card profilo in cima alla sidebar (avatar + nome), come nella dashboard di riferimento. */
 function SidebarProfile() {
   const { stats } = useStats();
+  const t = useT();
   const user = stats?.user;
   const avatar = user?.avatar_large_url ?? user?.avatar_url;
 
@@ -55,7 +58,7 @@ function SidebarProfile() {
           // eslint-disable-next-line @next/next/no-img-element -- avatar da CDN TikTok con URL a scadenza
           <img
             src={avatar}
-            alt={user?.display_name ?? "Avatar"}
+            alt={user?.display_name ?? t("Profile")}
             className="relative h-16 w-16 rounded-full border-2 border-black object-cover"
           />
         ) : (
@@ -65,7 +68,7 @@ function SidebarProfile() {
       <div className="flex flex-col items-center gap-0.5">
         <div className="flex items-center gap-1">
           <span className="font-semibold text-white">
-            {user?.display_name ?? "Profilo"}
+            {user?.display_name ?? t("Profile")}
           </span>
           {user?.is_verified && <VerifiedIcon className="h-4 w-4 text-tt-cyan" />}
         </div>
@@ -84,6 +87,7 @@ function SidebarProfile() {
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const t = useT();
   return (
     <nav className="flex flex-col gap-1 px-3">
       {NAV.map((item) => {
@@ -102,7 +106,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             }`}
           >
             <Icon className={`h-5 w-5 ${active ? "text-tt-pink" : ""}`} />
-            {item.label}
+            {t(item.label)}
           </Link>
         );
       })}
@@ -117,6 +121,7 @@ function HeaderLive() {
 }
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const t = useT();
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-5 py-5 font-semibold text-white">
@@ -135,7 +140,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
         >
           <LogoutIcon className="h-5 w-5" />
-          Esci
+          {t("Log out")}
         </a>
       </div>
     </div>
@@ -144,11 +149,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 function ShellChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const t = useT();
   // I link della sidebar chiudono il drawer via onNavigate al click.
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const active = NAV.find((item) => isActive(pathname, item));
-  const title = active?.label ?? "Dashboard";
+  const title = t(active?.label ?? "Dashboard");
 
   // Solo la lista Video usa lo shell ad altezza fissa (tabella scrollabile
   // internamente). Il dettaglio e le altre pagine scrollano come documento.
@@ -172,7 +178,7 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
         inert={!drawerOpen}
       >
         <button
-          aria-label="Chiudi menu"
+          aria-label={t("Close menu")}
           onClick={() => setDrawerOpen(false)}
           className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
             drawerOpen ? "opacity-100" : "opacity-0"
@@ -184,7 +190,7 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
           }`}
         >
           <button
-            aria-label="Chiudi menu"
+            aria-label={t("Close menu")}
             onClick={() => setDrawerOpen(false)}
             className="absolute right-3 top-4 rounded-lg p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white"
           >
@@ -204,7 +210,7 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
             <div className="flex items-center gap-3">
               <button
-                aria-label="Apri menu"
+                aria-label={t("Open menu")}
                 onClick={() => setDrawerOpen(true)}
                 className="rounded-lg p-1.5 text-zinc-300 hover:bg-white/5 hover:text-white md:hidden"
               >
@@ -212,9 +218,10 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
               </button>
               <h1 className="text-base font-semibold text-white sm:text-lg">{title}</h1>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               <SyncButton />
               <HeaderLive />
+              <LanguageSwitcher />
               <InstallButton compact />
             </div>
           </div>

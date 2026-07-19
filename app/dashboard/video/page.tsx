@@ -4,6 +4,7 @@ import { useMemo, useState, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
+import { useT } from "@/app/components/locale-provider";
 import FlashNumber from "@/app/components/flash-number";
 import {
   BookmarkIcon,
@@ -43,13 +44,13 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { key: "views", label: "Visual.", pick: (v) => v.view_count ?? 0, icon: EyeIcon, iconClass: "text-tt-cyan" },
-  { key: "likes", label: "Mi piace", pick: (v) => v.like_count ?? 0, icon: HeartIcon, iconClass: "text-tt-pink" },
-  { key: "comments", label: "Commenti", pick: (v) => v.comment_count ?? 0, icon: CommentIcon, iconClass: "text-tt-cyan" },
-  { key: "shares", label: "Condiv.", pick: (v) => v.share_count ?? 0, icon: ShareIcon, iconClass: "text-tt-pink" },
+  { key: "views", label: "Views", pick: (v) => v.view_count ?? 0, icon: EyeIcon, iconClass: "text-tt-cyan" },
+  { key: "likes", label: "Likes", pick: (v) => v.like_count ?? 0, icon: HeartIcon, iconClass: "text-tt-pink" },
+  { key: "comments", label: "Comments", pick: (v) => v.comment_count ?? 0, icon: CommentIcon, iconClass: "text-tt-cyan" },
+  { key: "shares", label: "Shares", pick: (v) => v.share_count ?? 0, icon: ShareIcon, iconClass: "text-tt-pink" },
   { key: "share", label: "Share %", pick: videoShareRate, icon: ShareIcon, iconClass: "text-tt-cyan" },
-  { key: "saved", label: "Salvati", pick: (v) => v.saved_count ?? 0, icon: BookmarkIcon, iconClass: "text-tt-cyan" },
-  { key: "engagement", label: "Interaz.", pick: videoEngagement, icon: TrendUpIcon, iconClass: "text-tt-cyan" },
+  { key: "saved", label: "Saves", pick: (v) => v.saved_count ?? 0, icon: BookmarkIcon, iconClass: "text-tt-cyan" },
+  { key: "engagement", label: "Interactions", pick: videoEngagement, icon: TrendUpIcon, iconClass: "text-tt-cyan" },
 ];
 
 const PAGE_SIZE = 20;
@@ -108,10 +109,11 @@ function exportVideosCsv(list: VideoStats[]): void {
  * null = dato non disponibile (mostra N/D).
  */
 function ValueCell({ value }: { value: number | null }) {
+  const t = useT();
   return (
     <td className="px-3 py-2 text-right tabular-nums text-white">
       {value === null ? (
-        <span className="text-zinc-600">N/D</span>
+        <span className="text-zinc-600">{t("N/A")}</span>
       ) : (
         <FlashNumber value={value} />
       )}
@@ -141,6 +143,7 @@ function ShareCell({ rate }: { rate: number }) {
 }
 
 export default function VideoPage() {
+  const t = useT();
   const { stats, error } = useStats();
   const [sortKey, setSortKey] = useState<SortKey>("recent");
   const [sortDesc, setSortDesc] = useState(true);
@@ -190,14 +193,14 @@ export default function VideoPage() {
       <Card
         title={
           <>
-            Tutti i video (<FlashNumber value={videos.length} />)
+            {t("All videos")} (<FlashNumber value={videos.length} />)
           </>
         }
         action={
           <button
             onClick={() => exportVideosCsv(sorted)}
             disabled={sorted.length === 0}
-            title="Esporta l’elenco video in CSV"
+            title={t("Export the video list as CSV")}
             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-tt-cyan/60 hover:text-white disabled:opacity-40"
           >
             <DownloadIcon className="h-3.5 w-3.5" />
@@ -213,7 +216,7 @@ export default function VideoPage() {
               <tr className="text-left text-[11px] uppercase tracking-wider text-zinc-500">
                 <th className="sticky top-0 z-10 border-b border-white/5 bg-[#0c0c0c] px-4 py-2.5 font-medium sm:px-5">
                   <button onClick={() => toggleSort("recent")} className="hover:text-white">
-                    Video{sortArrow("recent")}
+                    {t("Video")}{sortArrow("recent")}
                   </button>
                 </th>
                 {COLUMNS.map((c) => {
@@ -229,7 +232,7 @@ export default function VideoPage() {
                       >
                         <Icon className={`h-3.5 w-3.5 ${c.iconClass}`} />
                         <span>
-                          {c.label}
+                          {t(c.label)}
                           {sortArrow(c.key)}
                         </span>
                       </button>
@@ -266,7 +269,7 @@ export default function VideoPage() {
                                 })}%`
                               }
                             />
-                            engagement
+                            {t("engagement")}
                           </p>
                         </div>
                       </div>
@@ -292,17 +295,17 @@ export default function VideoPage() {
               disabled={current === 0}
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
             >
-              ← Prec
+              {t("← Prev")}
             </button>
             <span className="text-xs text-zinc-500">
-              Pagina {current + 1} di {pageCount}
+              {t("Page")} {current + 1} {t("of")} {pageCount}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
               disabled={current >= pageCount - 1}
               className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
             >
-              Succ →
+              {t("Next →")}
             </button>
           </div>
         )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DownloadIcon } from "./icons";
+import { useT } from "./locale-provider";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -15,6 +16,7 @@ interface Env {
 }
 
 export default function InstallButton({ compact = false }: { compact?: boolean }) {
+  const t = useT();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   // ready=false finché non siamo montati sul client: così server e prima render
   // client mostrano entrambi null (nessun mismatch di hydration).
@@ -47,8 +49,9 @@ export default function InstallButton({ compact = false }: { compact?: boolean }
     if (compact) return null;
     return (
       <p className="max-w-xs text-xs text-zinc-500">
-        Per installare l’app: tocca <span className="text-zinc-300">Condividi</span> e poi{" "}
-        <span className="text-zinc-300">“Aggiungi a Home”</span>.
+        {t("To install the app: tap")}{" "}
+        <span className="text-zinc-300">{t("Share")}</span> {t("and then")}{" "}
+        <span className="text-zinc-300">{t("“Add to Home Screen”")}</span>.
       </p>
     );
   }
@@ -65,12 +68,12 @@ export default function InstallButton({ compact = false }: { compact?: boolean }
     return (
       <button
         onClick={install}
-        title="Installa l’app"
-        aria-label="Installa l’app"
+        title={t("Install the app")}
+        aria-label={t("Install the app")}
         className="flex items-center gap-1.5 rounded-full border border-white/15 px-2 py-2 text-xs font-medium text-zinc-200 transition-colors hover:border-tt-cyan/60 hover:text-white sm:px-3 sm:py-1.5"
       >
         <DownloadIcon className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Installa</span>
+        <span className="hidden sm:inline">{t("Install")}</span>
       </button>
     );
   }
@@ -81,7 +84,7 @@ export default function InstallButton({ compact = false }: { compact?: boolean }
       className="flex items-center gap-2 rounded-full border border-white/15 px-6 py-2.5 text-sm font-medium text-zinc-200 transition-colors hover:border-tt-cyan/60 hover:text-white"
     >
       <DownloadIcon className="h-4 w-4" />
-      Installa l’app
+      {t("Install the app")}
     </button>
   );
 }

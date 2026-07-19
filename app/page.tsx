@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
+import { getServerT } from "@/lib/i18n/server";
 import { hasSession } from "@/lib/session";
 import { TikTokIcon } from "./components/icons";
 import InstallButton from "./components/install-button";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  access_denied: "Hai negato l’accesso su TikTok.",
-  invalid_state: "Verifica di sicurezza non superata: riprova.",
-  token_exchange_failed: "Non sono riuscito a completare l’accesso: riprova.",
-  session_expired: "La sessione è scaduta: accedi di nuovo.",
+const ERROR_KEYS: Record<string, string> = {
+  access_denied: "You denied access on TikTok.",
+  invalid_state: "Security check failed: try again.",
+  token_exchange_failed: "Couldn’t complete sign-in: try again.",
+  session_expired: "Your session expired: sign in again.",
 };
 
 export default async function Home({
@@ -17,9 +18,10 @@ export default async function Home({
 }) {
   if (await hasSession()) redirect("/dashboard");
 
+  const { t } = await getServerT();
   const { error } = await searchParams;
   const errorMessage = error
-    ? (ERROR_MESSAGES[error] ?? "Si è verificato un errore: riprova.")
+    ? t(ERROR_KEYS[error] ?? "An error occurred: try again.")
     : null;
 
   return (
@@ -31,9 +33,9 @@ export default async function Home({
           <span className="text-tt-pink">Stats</span>
         </h1>
         <p className="max-w-md text-zinc-400">
-          Accedi col tuo account TikTok e guarda follower, visualizzazioni, mi
-          piace, commenti e condivisioni di tutti i tuoi video aggiornarsi in
-          tempo reale, ogni 5 secondi.
+          {t(
+            "Sign in with your TikTok account and watch followers, views, likes, comments and shares across all your videos update in real time, every 5 seconds.",
+          )}
         </p>
       </div>
 
@@ -48,14 +50,15 @@ export default async function Home({
         className="flex items-center gap-3 rounded-full bg-tt-pink px-8 py-4 text-base font-semibold text-white transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(254,44,85,0.45)]"
       >
         <TikTokIcon className="h-5 w-5" />
-        Continua con TikTok
+        {t("Continue with TikTok")}
       </a>
 
       <InstallButton />
 
       <p className="max-w-sm text-xs text-zinc-600">
-        Nessun dato viene salvato: i token di accesso vivono in cookie httpOnly
-        e le statistiche in una cache temporanea in memoria.
+        {t(
+          "No data is stored: access tokens live in httpOnly cookies and stats in a temporary in-memory cache.",
+        )}
       </p>
     </main>
   );

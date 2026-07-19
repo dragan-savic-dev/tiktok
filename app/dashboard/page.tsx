@@ -13,6 +13,7 @@ import { Card } from "@/app/components/card";
 import DeltaBadge from "@/app/components/delta-badge";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
+import { useT } from "@/app/components/locale-provider";
 import StatCard from "@/app/components/stat-card";
 import {
   engagementRate,
@@ -56,6 +57,7 @@ function HeroStat({
 }
 
 export default function OverviewPage() {
+  const t = useT();
   const { stats, error, delta } = useStats();
 
   if (!stats) {
@@ -71,11 +73,11 @@ export default function OverviewPage() {
   const rate = engagementRate(stats);
 
   const interactions = [
-    { label: "Mi piace", value: totals.likes, color: CHART_COLORS.pink },
-    { label: "Commenti", value: totals.comments, color: CHART_COLORS.cyan },
-    { label: "Condivisioni", value: totals.shares, color: CHART_COLORS.violet },
+    { label: t("Likes"), value: totals.likes, color: CHART_COLORS.pink },
+    { label: t("Comments"), value: totals.comments, color: CHART_COLORS.cyan },
+    { label: t("Shares"), value: totals.shares, color: CHART_COLORS.violet },
     ...(saved !== null
-      ? [{ label: "Salvati", value: saved, color: CHART_COLORS.amber }]
+      ? [{ label: t("Saves"), value: saved, color: CHART_COLORS.amber }]
       : []),
   ];
   const interactionsTotal = interactions.reduce((s, i) => s + i.value, 0);
@@ -88,7 +90,7 @@ export default function OverviewPage() {
 
       {/* Donut interazioni + profilo/totali */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Ripartizione interazioni">
+        <Card title={t("Interaction breakdown")}>
           <div className="flex flex-col items-center gap-5">
             <DonutChart
               segments={interactions}
@@ -98,7 +100,7 @@ export default function OverviewPage() {
                     <FlashNumber value={rate} format={(f) => formatPercent(f, 1)} />
                   </span>
                   <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-                    engagement
+                    {t("engagement")}
                   </span>
                 </>
               }
@@ -132,19 +134,19 @@ export default function OverviewPage() {
         <Card className="lg:col-span-2" bodyClassName="flex flex-col gap-4 p-4 sm:p-5">
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             <HeroStat
-              label="Seguiti"
+              label={t("Following")}
               value={user.following_count ?? 0}
               delta={delta((s) => s.user.following_count)}
             />
             <HeroStat
-              label="Follower"
+              label={t("Followers")}
               value={user.follower_count ?? 0}
               delta={delta((s) => s.user.follower_count)}
             />
             {/* Mi piace: su mobile scende tra i totali (sotto); torna qui da lg. */}
             <div className="hidden lg:block">
               <HeroStat
-                label="Mi piace"
+                label={t("Likes")}
                 value={user.likes_count ?? 0}
                 delta={delta((s) => s.user.likes_count)}
               />
@@ -153,11 +155,11 @@ export default function OverviewPage() {
 
           <div className="flex flex-col gap-3">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-400">
-              Totali su tutti i video
+              {t("Totals across all videos")}
             </h3>
             <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
               <StatCard
-                label="Visualizzazioni"
+                label={t("Views")}
                 value={totals.views}
                 delta={delta((s) => s.totals.views)}
                 icon={<EyeIcon className="h-4 w-4" />}
@@ -167,7 +169,7 @@ export default function OverviewPage() {
               {/* Mi piace su mobile raggruppato coi totali; da lg torna tra i KPI. */}
               <div className="lg:hidden">
                 <StatCard
-                  label="Mi piace"
+                  label={t("Likes")}
                   value={user.likes_count ?? 0}
                   delta={delta((s) => s.user.likes_count)}
                   icon={<HeartIcon className="h-4 w-4" />}
@@ -175,21 +177,21 @@ export default function OverviewPage() {
                 />
               </div>
               <StatCard
-                label="Commenti"
+                label={t("Comments")}
                 value={totals.comments}
                 delta={delta((s) => s.totals.comments)}
                 icon={<CommentIcon className="h-4 w-4" />}
                 accent="cyan"
               />
               <StatCard
-                label="Condivisioni"
+                label={t("Shares")}
                 value={totals.shares}
                 delta={delta((s) => s.totals.shares)}
                 icon={<ShareIcon className="h-4 w-4" />}
                 accent="cyan"
               />
               <StatCard
-                label="Salvati"
+                label={t("Saves")}
                 value={saved}
                 delta={delta((s) => s.saved ?? undefined)}
                 icon={<BookmarkIcon className="h-4 w-4" />}
@@ -198,9 +200,10 @@ export default function OverviewPage() {
             </div>
           </div>
           <p className="mt-auto text-xs text-zinc-500">
-            Somma su <FlashNumber value={totals.videosCounted} /> video pubblici ·
-            aggiornamento ogni 5 secondi · i “salvati” sono letti dalle pagine
-            pubbliche circa ogni minuto (N/D se TikTok li blocca).
+            {t("Sum across")} <FlashNumber value={totals.videosCounted} />{" "}
+            {t(
+              "public videos · updated every 5 seconds · “saves” are read from the public pages about once a minute (N/A if TikTok blocks them).",
+            )}
           </p>
         </Card>
       </div>
@@ -208,36 +211,36 @@ export default function OverviewPage() {
       {/* Medie per video */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
-          label="Media view / video"
+          label={t("Avg view / video")}
           value={perVideoAverage(totals.views, totals.videosCounted)}
         />
         <StatTile
-          label="Media like / video"
+          label={t("Avg like / video")}
           value={perVideoAverage(totals.likes, totals.videosCounted)}
         />
         <StatTile
-          label="Share rate medio"
+          label={t("Avg share rate")}
           value={totals.views ? totals.shares / totals.views : 0}
           format={(f) => formatPercent(f, 2)}
         />
-        <StatTile label="Video pubblici" value={totals.videosCounted} exact />
+        <StatTile label={t("Public videos")} value={totals.videosCounted} exact />
       </div>
 
       {/* Ultimi video */}
       <Card
-        title="Ultimi video"
+        title={t("Latest videos")}
         action={
           <Link
             href="/dashboard/video"
             className="text-xs font-medium text-tt-cyan transition-colors hover:text-white"
           >
-            Vedi tutti →
+            {t("See all")} →
           </Link>
         }
         bodyClassName=""
       >
         {recentVideos.length === 0 ? (
-          <p className="p-5 text-sm text-zinc-500">Nessun video pubblico trovato.</p>
+          <p className="p-5 text-sm text-zinc-500">{t("No public videos found.")}</p>
         ) : (
           <ul className="divide-y divide-white/5">
             {recentVideos.map((v, i) => (

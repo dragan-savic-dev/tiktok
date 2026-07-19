@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card } from "@/app/components/card";
 import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import FlashNumber from "@/app/components/flash-number";
+import { useT } from "@/app/components/locale-provider";
 import {
   formatCompact,
   formatPercent,
@@ -74,7 +75,7 @@ const TOP_METRICS: {
 }[] = [
   {
     key: "views",
-    label: "Visualizzazioni",
+    label: "Views",
     pick: (v) => v.view_count ?? 0,
     format: formatCompact,
     color: CHART_COLORS.cyan,
@@ -88,7 +89,7 @@ const TOP_METRICS: {
   },
   {
     key: "saved",
-    label: "Salvati / 1.000",
+    label: "Saves / 1,000",
     pick: (v) =>
       v.view_count && v.saved_count != null ? (v.saved_count / v.view_count) * 1000 : 0,
     format: (n) => n.toLocaleString("it-IT", { maximumFractionDigits: 1 }),
@@ -98,6 +99,7 @@ const TOP_METRICS: {
 
 /** Classifica video come lista HTML: titoli cliccabili, barre proporzionali. */
 function TopVideoList({ videos }: { videos: VideoStats[] }) {
+  const t = useT();
   const [metric, setMetric] = useState<TopMetric>("views");
   const hasSaved = videos.some((v) => v.saved_count != null);
   const metrics = TOP_METRICS.filter((m) => m.key !== "saved" || hasSaved);
@@ -119,7 +121,7 @@ function TopVideoList({ videos }: { videos: VideoStats[] }) {
                 : "text-zinc-400 hover:text-white"
             }`}
           >
-            {m.label}
+            {t(m.label)}
           </button>
         ))}
       </div>
@@ -161,6 +163,7 @@ function TopVideoList({ videos }: { videos: VideoStats[] }) {
 }
 
 export default function AnalyticsPage() {
+  const t = useT();
   const { stats, error } = useStats();
 
   if (!stats) {
@@ -190,7 +193,7 @@ export default function AnalyticsPage() {
   // di pubblicazione (fuso orario del browser).
   const dated = videos.filter((v) => v.create_time);
   const weekdayBars: BarDatum[] = WEEKDAYS.map((label, i) => ({
-    label,
+    label: t(label),
     value: averageWhere(
       dated,
       (v) => (new Date(v.create_time! * 1000).getDay() + 6) % 7 === i,
@@ -252,41 +255,41 @@ export default function AnalyticsPage() {
       {error && <ErrorBanner message={error} />}
 
       <p className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-xs text-zinc-500">
-        Questi grafici fotografano lo stato <strong className="text-zinc-300">attuale</strong> di
-        ogni video. Per l’andamento nel tempo (crescita giornaliera, picchi) vai
-        alla sezione <strong className="text-zinc-300">Crescita</strong>.
+        {t(
+          "These charts capture the current state of each video. For the trend over time (daily growth, peaks) see the Growth section.",
+        )}
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title={`Visualizzazioni · ultimi ${recent.length} video`}>
+        <Card title={`${t("Views · last")} ${recent.length} ${t("videos")}`}>
           <BarChart bars={viewBars} color={CHART_COLORS.cyan} />
         </Card>
-        <Card title={`Interazioni · ultimi ${recent.length} video`}>
+        <Card title={`${t("Interactions · last")} ${recent.length} ${t("videos")}`}>
           <BarChart bars={engagementBars} color={CHART_COLORS.pink} />
         </Card>
       </div>
 
       {/* Quando pubblicare: performance media per momento di pubblicazione */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="View medie per giorno di pubblicazione" className="lg:col-span-2">
+        <Card title={t("Average views by publish day")} className="lg:col-span-2">
           <BarChart bars={weekdayBars} color={CHART_COLORS.violet} height={180} />
         </Card>
-        <Card title="View medie per fascia oraria">
+        <Card title={t("Average views by time slot")}>
           <BarChart bars={hourBars} color={CHART_COLORS.amber} height={180} />
         </Card>
       </div>
 
-      <Card title="Quando pubblicare · heatmap giorno × ora">
+      <Card title={t("When to post · day × hour heatmap")}>
         <Heatmap cells={heatCells} max={heatMax} />
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="View medie per durata">
+        <Card title={t("Average views by duration")}>
           <BarChart bars={durationBars} color={CHART_COLORS.emerald} height={180} />
         </Card>
-        <Card title={`Top ${TOP_COUNT} video`} className="lg:col-span-2">
+        <Card title={`${t("Top")} ${TOP_COUNT} ${t("videos")}`} className="lg:col-span-2">
           {videos.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nessun video disponibile.</p>
+            <p className="text-sm text-zinc-500">{t("No videos available.")}</p>
           ) : (
             <TopVideoList videos={videos} />
           )}
@@ -295,22 +298,22 @@ export default function AnalyticsPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <MiniStat
-          label="Interazioni totali"
+          label="Total interactions"
           value={totals.likes + totals.comments + totals.shares}
           format={formatCompact}
         />
         <MiniStat
-          label="Miglior video (view)"
+          label="Best video (views)"
           value={bestVideo?.view_count ?? 0}
           format={formatCompact}
           href={bestVideo ? `/dashboard/video/${bestVideo.id}` : undefined}
           hint={bestVideo ? videoTitle(bestVideo) : undefined}
         />
         <MiniStat
-          label="View dai top 10"
+          label="Views from top 10"
           value={concentration}
           format={(f) => formatPercent(f, 0)}
-          hint="quanta parte delle visualizzazioni arriva dai 10 video migliori"
+          hint={t("how much of the views comes from the 10 best videos")}
         />
       </div>
     </div>
@@ -319,9 +322,10 @@ export default function AnalyticsPage() {
 
 /** Heatmap giorno × fascia oraria: verde intenso = slot con più view medie. */
 function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
+  const t = useT();
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[560px]">
+      <div className="min-w-[560px] max-w-2xl">
         <div className="grid grid-cols-[2.5rem_repeat(12,1fr)] gap-1 text-[10px] text-zinc-500">
           <span />
           {HOUR_BUCKETS.map((b) => (
@@ -335,16 +339,16 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
             key={WEEKDAYS[di]}
             className="mt-1 grid grid-cols-[2.5rem_repeat(12,1fr)] items-center gap-1"
           >
-            <span className="text-[10px] text-zinc-500">{WEEKDAYS[di]}</span>
+            <span className="text-[10px] text-zinc-500">{t(WEEKDAYS[di])}</span>
             {row.map((v, hi) => {
               const intensity = v > 0 ? 0.12 + 0.88 * (v / max) : 0;
               return (
                 <div
                   key={HOUR_BUCKETS[hi].label}
-                  title={`${WEEKDAYS[di]} ${HOUR_BUCKETS[hi].label}: ${formatCompact(
+                  title={`${t(WEEKDAYS[di])} ${HOUR_BUCKETS[hi].label}: ${formatCompact(
                     Math.round(v),
-                  )} view medie`}
-                  className="aspect-square rounded-[4px] border border-white/5"
+                  )} ${t("avg views")}`}
+                  className="h-8 rounded-[4px] border border-white/5 sm:h-9"
                   style={{
                     backgroundColor:
                       v > 0
@@ -374,6 +378,7 @@ function MiniStat({
   hint?: string;
   href?: string;
 }) {
+  const t = useT();
   const hintNode = hint ? (
     href ? (
       <Link href={href} className="truncate text-xs text-zinc-500 hover:text-tt-cyan">
@@ -387,7 +392,7 @@ function MiniStat({
   return (
     <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
       <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">
-        {label}
+        {t(label)}
       </span>
       <span className="text-2xl font-bold text-white">
         <FlashNumber value={value} format={format} />

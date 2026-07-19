@@ -1,8 +1,10 @@
+import { numberLocale } from "@/lib/i18n/format";
+
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-/** Formato di default dei contatori: intero non negativo in stile it-IT. */
+/** Formato di default dei contatori: intero non negativo, nel locale corrente. */
 export function defaultNumberFormat(n: number): string {
-  return Math.max(0, Math.round(n)).toLocaleString("it-IT");
+  return Math.max(0, Math.round(n)).toLocaleString(numberLocale());
 }
 
 function RollingDigit({ digit }: { digit: number }) {
