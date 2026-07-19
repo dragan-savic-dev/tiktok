@@ -23,11 +23,12 @@ const TOP_COUNT = 8;
 
 // getDay(): 0 = domenica; riportato a 0 = lunedì per leggere Lun→Dom.
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-// Fasce orarie di pubblicazione da 2 ore (0–2, 2–4, … 22–24).
-const HOUR_BUCKETS = Array.from({ length: 12 }, (_, i) => ({
-  label: `${i * 2}–${i * 2 + 2}`,
-  from: i * 2,
-  to: i * 2 + 2,
+// Fasce orarie di pubblicazione da 1 ora (0, 1, … 23): granularità oraria per
+// grafico "fascia oraria" e colonne della heatmap.
+const HOUR_BUCKETS = Array.from({ length: 24 }, (_, i) => ({
+  label: `${i}`,
+  from: i,
+  to: i + 1,
 }));
 
 /**
@@ -268,25 +269,23 @@ export default function AnalyticsPage() {
         <BarChart bars={engagementBars} color={CHART_COLORS.pink} />
       </Card>
 
-      {/* Quando pubblicare: heatmap + view medie per giorno, affiancate.
-          min-w-0 sugli item: senza, la heatmap (min-w interna) sforerebbe lo
-          schermo su mobile invece di scrollare dentro il suo contenitore. */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card title={t("When to post · day × hour heatmap")} className="min-w-0">
-          <Heatmap cells={heatCells} max={heatMax} />
-        </Card>
-        <Card title={t("Average views by publish day")} className="min-w-0">
-          <BarChart bars={weekdayBars} color={CHART_COLORS.violet} height={240} />
-        </Card>
-      </div>
+      {/* Heatmap giorno × ora (per ora): riga intera per le 24 colonne */}
+      <Card title={t("When to post · day × hour heatmap")}>
+        <Heatmap cells={heatCells} max={heatMax} />
+      </Card>
 
-      {/* Fascia oraria + durata */}
+      {/* View medie per fascia oraria (per ora): riga intera per le 24 fasce */}
+      <Card title={t("Average views by time slot")}>
+        <BarChart bars={hourBars} color={CHART_COLORS.amber} height={200} />
+      </Card>
+
+      {/* View medie per giorno di pubblicazione + durata */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title={t("Average views by time slot")}>
-          <BarChart bars={hourBars} color={CHART_COLORS.amber} height={180} />
+        <Card title={t("Average views by publish day")}>
+          <BarChart bars={weekdayBars} color={CHART_COLORS.violet} height={200} />
         </Card>
         <Card title={t("Average views by duration")}>
-          <BarChart bars={durationBars} color={CHART_COLORS.emerald} height={180} />
+          <BarChart bars={durationBars} color={CHART_COLORS.emerald} height={200} />
         </Card>
       </div>
 
@@ -331,24 +330,24 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
   );
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[520px]">
-        <div className="grid grid-cols-[2.5rem_repeat(12,1fr)] gap-1 text-[10px] text-zinc-500">
+      <div className="min-w-[760px]">
+        <div className="grid grid-cols-[2.5rem_repeat(24,1fr)] gap-1 text-[10px] text-zinc-500">
           <span />
           {HOUR_BUCKETS.map((b) => (
             <span key={b.label} className="text-center tabular-nums">
-              {b.from}
+              {b.from % 2 === 0 ? b.from : ""}
             </span>
           ))}
         </div>
         {cells.map((row, di) => (
           <div
             key={WEEKDAYS[di]}
-            className="mt-1 grid grid-cols-[2.5rem_repeat(12,1fr)] items-center gap-1"
+            className="mt-1 grid grid-cols-[2.5rem_repeat(24,1fr)] items-center gap-1"
           >
             <span className="text-[10px] text-zinc-500">{t(WEEKDAYS[di])}</span>
             {row.map((v, hi) => {
               const intensity = v > 0 ? 0.12 + 0.88 * (v / max) : 0;
-              const label = `${t(WEEKDAYS[di])} ${HOUR_BUCKETS[hi].label} · ${formatCompact(
+              const label = `${t(WEEKDAYS[di])} ${HOUR_BUCKETS[hi].from}–${HOUR_BUCKETS[hi].to} · ${formatCompact(
                 Math.round(v),
               )} ${t("avg views")}`;
               return (
