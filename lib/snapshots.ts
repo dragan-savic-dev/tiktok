@@ -85,7 +85,7 @@ export function toSeries(
 }
 
 /** Ultimo valore non-null con t <= target, oppure null se non esiste. */
-function valueBefore(
+export function valueBefore(
   snapshots: HistorySnapshot[],
   target: number,
   pick: (s: HistorySnapshot) => number | null,
@@ -97,6 +97,39 @@ function valueBefore(
     if (v !== null) result = v;
   }
   return result;
+}
+
+/** Ultimo valore non-null della serie (il "conteggio attuale"). */
+export function latestValue(
+  snapshots: HistorySnapshot[],
+  pick: (s: HistorySnapshot) => number | null,
+): number | null {
+  for (let i = snapshots.length - 1; i >= 0; i--) {
+    const v = pick(snapshots[i]);
+    if (v !== null) return v;
+  }
+  return null;
+}
+
+/**
+ * Variazione su una finestra scelta (es. gli ultimi N giorni). A differenza di
+ * computeDelta, la finestra è parametrica così il selettore 7/30/90/120 filtra
+ * anche le card. Se lo storico non copre l'intera finestra, ripiega sul valore
+ * più vecchio disponibile (così mostra un numero invece di "—"). null solo con
+ * meno di due rilevazioni.
+ */
+export function changeSince(
+  snapshots: HistorySnapshot[],
+  pick: (s: HistorySnapshot) => number | null,
+  now: number,
+  windowMs: number,
+): number | null {
+  const valued = snapshots.filter((s) => pick(s) !== null);
+  if (valued.length < 2) return null;
+  const latest = pick(valued[valued.length - 1]) as number;
+  let base = valueBefore(valued, now - windowMs, pick);
+  if (base === null) base = pick(valued[0]);
+  return base === null ? null : latest - base;
 }
 
 export function computeDelta(

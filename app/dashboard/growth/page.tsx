@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import type {
   DailyPoint,
-  HistoryDelta,
   HistoryResponse,
   HistorySnapshot,
   VideoStats,
@@ -15,7 +14,14 @@ import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
 import { readLocalSnapshots } from "@/lib/local-history";
 import { formatCompact } from "@/lib/metrics";
-import { computeDelta, DAY_MS, mergeSnapshots, toSeries } from "@/lib/snapshots";
+import {
+  changeSince,
+  computeDelta,
+  DAY_MS,
+  latestValue,
+  mergeSnapshots,
+  toSeries,
+} from "@/lib/snapshots";
 import { useStats } from "../stats-context";
 import { CHART_COLORS, Loading } from "../shared";
 import { useT } from "@/app/components/locale-provider";
@@ -45,29 +51,46 @@ function toneClass(n: number | null): string {
   return n > 0 ? "text-emerald-400" : "text-tt-pink";
 }
 
-function DeltaStat({ label, delta }: { label: string; delta: HistoryDelta }) {
+/**
+ * Card metrica della Crescita: conteggio attuale + variazione sul periodo
+ * selezionato (7/30/90/120 gg) e variazione di oggi.
+ */
+function MetricCard({
+  label,
+  current,
+  change,
+  today,
+  periodLabel,
+}: {
+  label: string;
+  /** Conteggio attuale (null = non disponibile). */
+  current: number | null;
+  /** Variazione sul periodo selezionato (null = storico insufficiente). */
+  change: number | null;
+  /** Variazione di oggi (null = storico insufficiente). */
+  today: number | null;
+  /** Etichetta del periodo, es. "7 giorni". */
+  periodLabel: string;
+}) {
   const t = useT();
   return (
-    <Card title={label} bodyClassName="flex items-end justify-between gap-4 p-4 sm:p-5">
-      <div className="flex flex-col">
-        <span className={`text-2xl font-bold ${toneClass(delta.today)}`}>
-          {delta.today === null ? (
-            "—"
-          ) : (
-            <FlashNumber value={delta.today} format={formatSigned} />
-          )}
+    <Card title={label} bodyClassName="flex flex-col gap-2 p-4 sm:p-5">
+      <span className="text-2xl font-bold text-white sm:text-3xl">
+        {current === null ? "—" : <FlashNumber value={current} format={formatCompact} />}
+      </span>
+      <div className="flex items-center justify-between gap-3 text-xs">
+        <span className="flex items-baseline gap-1.5">
+          <span className={`font-semibold ${toneClass(change)}`}>
+            {change === null ? "—" : <FlashNumber value={change} format={formatSigned} />}
+          </span>
+          <span className="text-zinc-500">{periodLabel}</span>
         </span>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500">{t("today")}</span>
-      </div>
-      <div className="flex flex-col items-end">
-        <span className={`text-lg font-semibold ${toneClass(delta.week)}`}>
-          {delta.week === null ? (
-            "—"
-          ) : (
-            <FlashNumber value={delta.week} format={formatSigned} />
-          )}
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-zinc-500">{t("today")}</span>
+          <span className={`font-semibold ${toneClass(today)}`}>
+            {today === null ? "—" : <FlashNumber value={today} format={formatSigned} />}
+          </span>
         </span>
-        <span className="text-[10px] uppercase tracking-widest text-zinc-500">{t("7 days")}</span>
       </div>
     </Card>
   );
@@ -243,14 +266,30 @@ export default function GrowthPage() {
   const windowed = merged.filter((s) => s.t >= now - days * DAY_MS);
   const daily = toSeries(windowed, hourly ? "hour" : "day");
   const count = merged.length;
-  const deltas = {
-    followers: computeDelta(merged, (s) => s.followers, now),
-    views: computeDelta(merged, (s) => s.views, now),
-    likes: computeDelta(merged, (s) => s.likes, now),
-    comments: computeDelta(merged, (s) => s.comments, now),
-    shares: computeDelta(merged, (s) => s.shares, now),
-    saved: computeDelta(merged, (s) => s.saved, now),
-  };
+  const windowMs = days * DAY_MS;
+  const rangeLabel = t(RANGES.find((r) => r.days === days)?.label ?? "");
+
+  // Card metriche: conteggio attuale (dai dati live, fallback all'ultimo
+  // snapshot) + variazione sul periodo selezionato + variazione di oggi. Il
+  // selettore 7/30/90/120 filtra quindi anche queste, non solo i grafici.
+  const metricDefs: {
+    label: string;
+    pick: (s: HistorySnapshot) => number | null;
+    current: number | null | undefined;
+  }[] = [
+    { label: t("Followers"), pick: (s) => s.followers, current: stats?.user.follower_count },
+    { label: t("Views"), pick: (s) => s.views, current: stats?.totals.views },
+    { label: t("Likes"), pick: (s) => s.likes, current: stats?.user.likes_count },
+    { label: t("Comments"), pick: (s) => s.comments, current: stats?.totals.comments },
+    { label: t("Shares"), pick: (s) => s.shares, current: stats?.totals.shares },
+    { label: t("Saves"), pick: (s) => s.saved, current: stats?.saved },
+  ];
+  const metrics = metricDefs.map((m) => ({
+    label: m.label,
+    current: m.current ?? latestValue(merged, m.pick),
+    change: changeSince(merged, m.pick, now, windowMs),
+    today: computeDelta(merged, m.pick, now).today,
+  }));
 
   const enoughData = daily.length >= 2;
   const deltaMode = mode === "delta";
@@ -261,7 +300,7 @@ export default function GrowthPage() {
 
   // Proiezione del prossimo traguardo follower al ritmo degli ultimi 7 giorni.
   const followers = stats?.user.follower_count ?? null;
-  const weekGain = deltas.followers.week;
+  const weekGain = computeDelta(merged, (s) => s.followers, now).week;
   const milestone =
     followers !== null && weekGain !== null && weekGain > 0
       ? {
@@ -311,7 +350,7 @@ export default function GrowthPage() {
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                {r.label}
+                {t(r.label)}
               </button>
             ))}
           </div>
@@ -353,15 +392,19 @@ export default function GrowthPage() {
         </p>
       )}
 
-      {/* Delta oggi / 7 giorni su tutte le metriche */}
+      {/* Conteggio attuale + variazione sul periodo selezionato per metrica */}
       {count > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <DeltaStat label={t("Followers")} delta={deltas.followers} />
-          <DeltaStat label={t("Views")} delta={deltas.views} />
-          <DeltaStat label={t("Likes")} delta={deltas.likes} />
-          <DeltaStat label={t("Comments")} delta={deltas.comments} />
-          <DeltaStat label={t("Shares")} delta={deltas.shares} />
-          <DeltaStat label={t("Saves")} delta={deltas.saved} />
+          {metrics.map((m) => (
+            <MetricCard
+              key={m.label}
+              label={m.label}
+              current={m.current}
+              change={m.change}
+              today={m.today}
+              periodLabel={rangeLabel}
+            />
+          ))}
         </div>
       )}
 
