@@ -18,7 +18,6 @@ import InstallButton from "@/app/components/install-button";
 import LanguageSwitcher from "@/app/components/language-switcher";
 import LiveIndicator from "@/app/components/live-indicator";
 import { useT } from "@/app/components/locale-provider";
-import SyncButton from "@/app/components/sync-button";
 import StatsProvider, { useStats } from "./stats-context";
 
 interface NavItem {
@@ -219,7 +218,6 @@ function ShellChrome({ children }: { children: React.ReactNode }) {
               <h1 className="text-base font-semibold text-white sm:text-lg">{title}</h1>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <SyncButton />
               <HeaderLive />
               <LanguageSwitcher />
               <InstallButton compact />

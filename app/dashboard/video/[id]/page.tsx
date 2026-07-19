@@ -16,7 +16,6 @@ import {
   EyeIcon,
   HeartIcon,
   PlayIcon,
-  RefreshIcon,
   ShareIcon,
 } from "@/app/components/icons";
 import {
@@ -166,35 +165,6 @@ export default function VideoDetailPage() {
   const { stats, error } = useStats();
   const fresh = useFreshVideo(id);
   const [playing, setPlaying] = useState(false);
-  // Scraping manuale dei "salvati": override locale del valore mostrato +
-  // stato del pulsante.
-  const [manualSaved, setManualSaved] = useState<number | null>(null);
-  const [scraping, setScraping] = useState(false);
-  const [scrapeMsg, setScrapeMsg] = useState<string | null>(null);
-
-  const handleScrape = async () => {
-    setScraping(true);
-    setScrapeMsg(null);
-    try {
-      const res = await fetch(`/api/video/${id}/scrape`, { method: "POST" });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(
-          typeof body?.message === "string" ? body.message : `HTTP ${res.status}`,
-        );
-      }
-      if (typeof body.saved === "number") {
-        setManualSaved(body.saved);
-        setScrapeMsg(t("Saves updated."));
-      } else {
-        setScrapeMsg(t("Scraping failed, try again shortly."));
-      }
-    } catch (err) {
-      setScrapeMsg(err instanceof Error ? err.message : t("Error during scraping"));
-    } finally {
-      setScraping(false);
-    }
-  };
 
   if (!stats) {
     return (
@@ -229,9 +199,8 @@ export default function VideoDetailPage() {
   const likes = video.like_count ?? 0;
   const comments = video.comment_count ?? 0;
   const shares = video.share_count ?? 0;
-  // "Salvati" del video via scraping: può mancare (N/D). Lo scraping manuale
-  // (pulsante) sovrascrive localmente il valore mostrato.
-  const saved = manualSaved ?? video.saved_count ?? null;
+  // "Salvati" del video (scraping lato server): può mancare (N/D).
+  const saved = video.saved_count ?? null;
   const rate = videoEngagementRate(video);
 
   // Ratio originale del video dall'API (fallback: dimensioni naturali della
@@ -395,20 +364,6 @@ export default function VideoDetailPage() {
           icon={<BookmarkIcon className="h-4 w-4" />}
           percentOfViews={views && saved !== null ? saved / views : null}
         />
-      </div>
-
-      {/* Scraping manuale dei "salvati" (unica metrica non esposta dall'API). */}
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={handleScrape}
-          disabled={scraping}
-          title={t("Reread this video's saves now from the public page (scraping)")}
-          className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:border-tt-cyan/60 hover:text-white disabled:opacity-50"
-        >
-          <RefreshIcon className={`h-4 w-4 ${scraping ? "animate-spin" : ""}`} />
-          {scraping ? t("Refreshing saves…") : t("Refresh saves (scraping)")}
-        </button>
-        {scrapeMsg && <span className="text-xs text-zinc-500">{scrapeMsg}</span>}
       </div>
 
       {/* Coinvolgimento */}

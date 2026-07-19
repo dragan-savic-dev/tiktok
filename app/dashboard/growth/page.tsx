@@ -12,7 +12,6 @@ import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import FlashNumber from "@/app/components/flash-number";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
-import { readLocalSnapshots } from "@/lib/local-history";
 import { formatCompact } from "@/lib/metrics";
 import {
   changeSince,
@@ -202,30 +201,17 @@ export default function GrowthPage() {
   const [viewDays, setViewDays] = useState(30);
   const [mode, setMode] = useState<"total" | "delta">("total");
   const [history, setHistory] = useState<HistoryResponse | null>(null);
-  const [localSnaps, setLocalSnaps] = useState<HistorySnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const { stats } = useStats();
 
   // Su 7 giorni gli snapshot al minuto permettono la granularità oraria.
   const hourly = viewDays === 7;
 
-  // Il sync ora è il pulsante globale nell'header: quando carica dati nel DB
-  // emette "tt:history-synced" e qui ricarichiamo lo storico.
-  useEffect(() => {
-    const onSynced = () => setReloadKey((k) => k + 1);
-    window.addEventListener("tt:history-synced", onSynced);
-    return () => window.removeEventListener("tt:history-synced", onSynced);
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     const granularity = days === 7 ? "hour" : "day";
     const load = async () => {
-      // Storico locale (localStorage): sopravvive anche quando il server è
-      // serverless e il suo filesystem viene riciclato.
-      setLocalSnaps(readLocalSnapshots());
       try {
         const res = await fetch(`/api/history?days=${days}&granularity=${granularity}`, {
           cache: "no-store",
@@ -249,7 +235,7 @@ export default function GrowthPage() {
       }
     };
     load();
-    // Aggiorna lo storico ogni minuto (cadenza a cui nascono nuovi snapshot).
+    // Aggiorna lo storico ogni minuto (il server storicizza ogni 10 min).
     const id = setInterval(() => {
       if (!document.hidden) load();
     }, 60_000);
@@ -257,19 +243,17 @@ export default function GrowthPage() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [days, reloadKey, t]);
+  }, [days, t]);
 
   if (loading && !history) return <Loading label={t("Loading history…")} />;
 
-  // Unione delle due fonti: snapshot del server (quando il suo storico esiste)
-  // e snapshot locali del browser. Serie e delta si calcolano sul totale.
+  // Storico solo dal server (Neon): il client non registra più nulla in locale.
   // "Adesso" è derivato dai dati (Date.now() nel render violerebbe la purezza).
   const now = Math.max(
     stats?.fetchedAt ?? 0,
     history?.daily.at(-1)?.t ?? 0,
-    localSnaps.at(-1)?.t ?? 0,
   );
-  const merged = mergeSnapshots(history?.daily ?? [], localSnaps, now);
+  const merged = mergeSnapshots(history?.daily ?? [], [], now);
   const windowed = merged.filter((s) => s.t >= now - viewDays * DAY_MS);
   const daily = toSeries(windowed, hourly ? "hour" : "day");
   const count = merged.length;
@@ -342,7 +326,7 @@ export default function GrowthPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-500">
           {t(
-            "Real trend over time: snapshots are saved in your browser while you use the app.",
+            "Real trend over time, recorded on the server every 10 minutes.",
           )}
         </p>
         <div className="flex flex-wrap items-center gap-2">
@@ -477,7 +461,7 @@ export default function GrowthPage() {
             <TrendUpIcon className="h-10 w-10 text-zinc-600" />
             <p className="max-w-md text-sm text-zinc-400">
               {t(
-                "Collecting data. Statistics are saved in your browser (and on the server) while you use the app, one snapshot per minute: at least two different moments are needed to track growth.",
+                "Collecting data: the server records a snapshot every 10 minutes; at least two different moments are needed to track growth.",
               )}
             </p>
             <p className="text-xs text-zinc-600">

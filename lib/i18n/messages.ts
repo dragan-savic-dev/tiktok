@@ -153,8 +153,8 @@ export const it: Record<string, string> = {
   "90 days": "90 giorni",
   "120 days": "120 giorni",
   "Network error": "Errore di rete",
-  "Real trend over time: snapshots are saved in your browser while you use the app.":
-    "Andamento reale nel tempo: gli snapshot si salvano nel tuo browser mentre usi l’app.",
+  "Real trend over time, recorded on the server every 10 minutes.":
+    "Andamento reale nel tempo, registrato sul server ogni 10 minuti.",
   Total: "Totale",
   "Change/hour": "Variazione/ora",
   "Change/day": "Variazione/giorno",
@@ -169,8 +169,8 @@ export const it: Record<string, string> = {
   publications: "pubblicazioni",
   "Likes over time": "Mi piace nel tempo",
   "Saves over time": "Salvati nel tempo",
-  "Collecting data. Statistics are saved in your browser (and on the server) while you use the app, one snapshot per minute: at least two different moments are needed to track growth.":
-    "Sto raccogliendo i dati. Le statistiche vengono salvate nel tuo browser (e sul server) mentre usi l’app, una foto al minuto: servono almeno due momenti diversi per tracciare la crescita.",
+  "Collecting data: the server records a snapshot every 10 minutes; at least two different moments are needed to track growth.":
+    "Sto raccogliendo i dati: il server registra uno snapshot ogni 10 minuti; servono almeno due momenti diversi per tracciare la crescita.",
   "snapshots so far — come back later.": "snapshot finora — torna più tardi.",
   "Leave the dashboard open and come back later.":
     "Lascia aperta la dashboard e torna più tardi.",

@@ -1,4 +1,4 @@
-import { readSavedStore, setSavedCount, writeSavedStore } from "./saved-store";
+import { readSavedStore, writeSavedStore } from "./saved-store";
 import type { VideoStats } from "./types";
 
 // Il conteggio "salvati" (collectCount) non è esposto dalla Display API
@@ -100,28 +100,6 @@ async function getState(openId: string): Promise<Map<string, VideoSavedState>> {
     }
   }
   return state;
-}
-
-/**
- * Scraping ON-DEMAND dei "salvati" di un singolo video (pulsante manuale nella
- * pagina del video). Aggiorna lo stato in memoria e lo store persistente, così
- * il valore compare subito ed è coerente col prossimo /api/stats. Ritorna il
- * conteggio letto, o l'ultimo noto se la lettura fallisce, o null.
- */
-export async function scrapeVideoSaved(
-  openId: string,
-  video: VideoStats,
-): Promise<number | null> {
-  if (!video.share_url) return null;
-  const state = await getState(openId);
-  const fresh = await fetchCollectCount(video.share_url);
-  const resolved = reconcileSaved(state.get(video.id)?.count, fresh);
-  state.set(video.id, { count: resolved, attemptedAt: Date.now() });
-  if (resolved !== undefined) {
-    await setSavedCount(openId, video.id, resolved);
-    return resolved;
-  }
-  return null;
 }
 
 export async function getSavedCounts(
