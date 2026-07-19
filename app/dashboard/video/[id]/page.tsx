@@ -75,12 +75,18 @@ function MetricTile({
   value,
   icon,
   className = "",
+  percentOfViews = null,
 }: {
   label: string;
   /** null = dato non disponibile (mostra N/D). */
   value: number | null;
   icon: ReactNode;
   className?: string;
+  /**
+   * Frazione sul totale visualizzazioni (0..1): mostrata accanto al valore in
+   * tono più chiaro. null = non mostrare (es. sulle visualizzazioni stesse).
+   */
+  percentOfViews?: number | null;
 }) {
   return (
     <div
@@ -92,11 +98,19 @@ function MetricTile({
         </span>
         <span className="shrink-0 text-tt-cyan">{icon}</span>
       </div>
-      <span className="text-xl font-semibold text-white sm:text-2xl">
+      <span className="flex items-baseline gap-1.5 text-xl font-semibold text-white sm:text-2xl">
         {value === null ? (
           <span className="text-zinc-500">N/D</span>
         ) : (
           <FlashNumber value={value} />
+        )}
+        {value !== null && percentOfViews !== null && (
+          <span className="text-sm font-medium text-zinc-500 sm:text-base">
+            <FlashNumber
+              value={percentOfViews}
+              format={(f) => formatPercent(f, 1)}
+            />
+          </span>
         )}
       </span>
     </div>
@@ -202,7 +216,6 @@ export default function VideoDetailPage() {
       ? [{ label: "Salvati", value: saved, color: CHART_COLORS.amber }]
       : []),
   ];
-  const interactionsTotal = interactions.reduce((s, i) => s + i.value, 0) || 1;
   const duration = formatDuration(video.duration);
   const date = formatDate(video.create_time);
 
@@ -308,14 +321,30 @@ export default function VideoDetailPage() {
           icon={<EyeIcon className="h-4 w-4" />}
           className="col-span-2 lg:col-span-1"
         />
-        <MetricTile label="Mi piace" value={likes} icon={<HeartIcon className="h-4 w-4" />} />
-        <MetricTile label="Commenti" value={comments} icon={<CommentIcon className="h-4 w-4" />} />
+        <MetricTile
+          label="Mi piace"
+          value={likes}
+          icon={<HeartIcon className="h-4 w-4" />}
+          percentOfViews={views ? likes / views : null}
+        />
+        <MetricTile
+          label="Commenti"
+          value={comments}
+          icon={<CommentIcon className="h-4 w-4" />}
+          percentOfViews={views ? comments / views : null}
+        />
         <MetricTile
           label="Condivisioni"
           value={shares}
           icon={<ShareIcon className="h-4 w-4" />}
+          percentOfViews={views ? shares / views : null}
         />
-        <MetricTile label="Salvati" value={saved} icon={<BookmarkIcon className="h-4 w-4" />} />
+        <MetricTile
+          label="Salvati"
+          value={saved}
+          icon={<BookmarkIcon className="h-4 w-4" />}
+          percentOfViews={views && saved !== null ? saved / views : null}
+        />
       </div>
 
       {/* Coinvolgimento */}
@@ -346,10 +375,10 @@ export default function VideoDetailPage() {
                     />
                     <span className="text-zinc-400">{i.label}</span>
                   </div>
-                  <span className="w-10 text-right tabular-nums text-zinc-500">
+                  <span className="w-14 text-right tabular-nums text-zinc-500">
                     <FlashNumber
-                      value={i.value / interactionsTotal}
-                      format={(f) => formatPercent(f, 0)}
+                      value={views ? i.value / views : 0}
+                      format={(f) => formatPercent(f, 1)}
                     />
                   </span>
                   <span className="w-20 text-right font-semibold tabular-nums text-white">
@@ -363,18 +392,29 @@ export default function VideoDetailPage() {
 
         <div className="flex flex-col gap-4 lg:col-span-2">
           <Card title="Intensità · ogni 1.000 visualizzazioni">
-            <div
-              className={`grid gap-4 ${
-                saved !== null ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
-              }`}
-            >
-              <Rate1k label="Mi piace" value={per1k(likes)} color={CHART_COLORS.pink} />
-              <Rate1k label="Commenti" value={per1k(comments)} color={CHART_COLORS.cyan} />
-              <Rate1k label="Condivisioni" value={per1k(shares)} color={CHART_COLORS.violet} />
-              {saved !== null && (
-                <Rate1k label="Salvati" value={per1k(saved)} color={CHART_COLORS.amber} />
-              )}
-            </div>
+            {views >= 1000 ? (
+              <div
+                className={`grid gap-4 ${
+                  saved !== null ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"
+                }`}
+              >
+                <Rate1k label="Mi piace" value={per1k(likes)} color={CHART_COLORS.pink} />
+                <Rate1k label="Commenti" value={per1k(comments)} color={CHART_COLORS.cyan} />
+                <Rate1k label="Condivisioni" value={per1k(shares)} color={CHART_COLORS.violet} />
+                {saved !== null && (
+                  <Rate1k label="Salvati" value={per1k(saved)} color={CHART_COLORS.amber} />
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-1 py-6 text-center">
+                <p className="text-sm text-zinc-400">
+                  Disponibile al raggiungimento di 1.000 visualizzazioni.
+                </p>
+                <p className="text-xs text-zinc-600">
+                  Mancano <FlashNumber value={1000 - views} /> visualizzazioni.
+                </p>
+              </div>
+            )}
           </Card>
 
           <Card title="Confronto con la media del profilo">
