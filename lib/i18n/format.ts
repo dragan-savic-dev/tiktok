@@ -5,7 +5,7 @@ import { DEFAULT_LOCALE, type Locale } from "./messages";
 // È un valore a livello di modulo aggiornato dal LocaleProvider in fase di
 // render (client e SSR): l'app è mono-utente, quindi va bene così.
 
-const TAG: Record<Locale, string> = { en: "en-GB", it: "it-IT" };
+const TAG: Record<Locale, string> = { en: "en-GB", it: "it-IT", es: "es-ES" };
 
 let current = TAG[DEFAULT_LOCALE];
 

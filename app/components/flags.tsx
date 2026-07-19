@@ -44,3 +44,13 @@ export function FlagIT({ className = "" }: FlagProps) {
     </svg>
   );
 }
+
+export function FlagES({ className = "" }: FlagProps) {
+  // Bandiera di Spagna semplificata (rosso-giallo-rosso, senza stemma).
+  return (
+    <svg viewBox="0 0 3 2" className={className} aria-hidden="true">
+      <rect width="3" height="2" fill="#c60b1e" />
+      <rect y="0.5" width="3" height="1" fill="#ffc400" />
+    </svg>
+  );
+}

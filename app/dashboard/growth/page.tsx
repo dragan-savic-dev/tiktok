@@ -195,6 +195,11 @@ function exportCsv(daily: DailyPoint[]): void {
 export default function GrowthPage() {
   const t = useT();
   const [days, setDays] = useState(30);
+  // Range a cui corrispondono i dati attualmente mostrati. Cambia SOLO quando il
+  // fetch del nuovo range è pronto: così cambiando filtro la vista non passa da
+  // uno stato intermedio (dati vecchi filtrati sulla finestra nuova) → niente
+  // doppio scatto. `days` guida solo il pulsante attivo e la richiesta.
+  const [viewDays, setViewDays] = useState(30);
   const [mode, setMode] = useState<"total" | "delta">("total");
   const [history, setHistory] = useState<HistoryResponse | null>(null);
   const [localSnaps, setLocalSnaps] = useState<HistorySnapshot[]>([]);
@@ -204,7 +209,7 @@ export default function GrowthPage() {
   const { stats } = useStats();
 
   // Su 7 giorni gli snapshot al minuto permettono la granularità oraria.
-  const hourly = days === 7;
+  const hourly = viewDays === 7;
 
   // Il sync ora è il pulsante globale nell'header: quando carica dati nel DB
   // emette "tt:history-synced" e qui ricarichiamo lo storico.
@@ -232,7 +237,9 @@ export default function GrowthPage() {
         const body = await res.json();
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         if (!cancelled) {
+          // Aggiorna dati e range della vista INSIEME: transizione unica.
           setHistory(body as HistoryResponse);
+          setViewDays(days);
           setError(null);
         }
       } catch (err) {
@@ -263,11 +270,11 @@ export default function GrowthPage() {
     localSnaps.at(-1)?.t ?? 0,
   );
   const merged = mergeSnapshots(history?.daily ?? [], localSnaps, now);
-  const windowed = merged.filter((s) => s.t >= now - days * DAY_MS);
+  const windowed = merged.filter((s) => s.t >= now - viewDays * DAY_MS);
   const daily = toSeries(windowed, hourly ? "hour" : "day");
   const count = merged.length;
-  const windowMs = days * DAY_MS;
-  const rangeLabel = t(RANGES.find((r) => r.days === days)?.label ?? "");
+  const windowMs = viewDays * DAY_MS;
+  const rangeLabel = t(RANGES.find((r) => r.days === viewDays)?.label ?? "");
 
   // Card metriche: conteggio attuale (dai dati live, fallback all'ultimo
   // snapshot) + variazione sul periodo selezionato + variazione di oggi. Il

@@ -260,41 +260,42 @@ export default function AnalyticsPage() {
         )}
       </p>
 
+      {/* Ultimi N video: uno per riga, a tutta larghezza */}
+      <Card title={`${t("Views · last")} ${recent.length} ${t("videos")}`}>
+        <BarChart bars={viewBars} color={CHART_COLORS.cyan} />
+      </Card>
+      <Card title={`${t("Interactions · last")} ${recent.length} ${t("videos")}`}>
+        <BarChart bars={engagementBars} color={CHART_COLORS.pink} />
+      </Card>
+
+      {/* Quando pubblicare: heatmap + view medie per giorno, affiancate */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title={`${t("Views · last")} ${recent.length} ${t("videos")}`}>
-          <BarChart bars={viewBars} color={CHART_COLORS.cyan} />
+        <Card title={t("When to post · day × hour heatmap")}>
+          <Heatmap cells={heatCells} max={heatMax} />
         </Card>
-        <Card title={`${t("Interactions · last")} ${recent.length} ${t("videos")}`}>
-          <BarChart bars={engagementBars} color={CHART_COLORS.pink} />
+        <Card title={t("Average views by publish day")}>
+          <BarChart bars={weekdayBars} color={CHART_COLORS.violet} height={240} />
         </Card>
       </div>
 
-      {/* Quando pubblicare: performance media per momento di pubblicazione */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card title={t("Average views by publish day")} className="lg:col-span-2">
-          <BarChart bars={weekdayBars} color={CHART_COLORS.violet} height={180} />
-        </Card>
+      {/* Fascia oraria + durata */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card title={t("Average views by time slot")}>
           <BarChart bars={hourBars} color={CHART_COLORS.amber} height={180} />
         </Card>
-      </div>
-
-      <Card title={t("When to post · day × hour heatmap")}>
-        <Heatmap cells={heatCells} max={heatMax} />
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-3">
         <Card title={t("Average views by duration")}>
           <BarChart bars={durationBars} color={CHART_COLORS.emerald} height={180} />
         </Card>
-        <Card title={`${t("Top")} ${TOP_COUNT} ${t("videos")}`} className="lg:col-span-2">
-          {videos.length === 0 ? (
-            <p className="text-sm text-zinc-500">{t("No videos available.")}</p>
-          ) : (
-            <TopVideoList videos={videos} />
-          )}
-        </Card>
       </div>
+
+      {/* Classifica video */}
+      <Card title={`${t("Top")} ${TOP_COUNT} ${t("videos")}`}>
+        {videos.length === 0 ? (
+          <p className="text-sm text-zinc-500">{t("No videos available.")}</p>
+        ) : (
+          <TopVideoList videos={videos} />
+        )}
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <MiniStat
@@ -325,7 +326,7 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
   const t = useT();
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[560px] max-w-2xl">
+      <div className="min-w-[520px]">
         <div className="grid grid-cols-[2.5rem_repeat(12,1fr)] gap-1 text-[10px] text-zinc-500">
           <span />
           {HOUR_BUCKETS.map((b) => (

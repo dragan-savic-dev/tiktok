@@ -99,10 +99,21 @@ export function formatPercent(fraction: number, digits = 1): string {
   })}%`;
 }
 
-/** Numero compatto stile 12.3k / 1.2M per etichette strette (nel locale corrente). */
+/**
+ * Numero compatto stile 12,3k / 1,2M, **troncato** (mai arrotondato per
+ * eccesso): "5 Mln" compare solo al superamento reale dei 5.000.000, non a
+ * 4,95M. Sotto i 1.000 mostra l'intero. Nel locale corrente.
+ */
 export function formatCompact(value: number | null): string {
   if (value === null || value === undefined) return "—";
-  return value.toLocaleString(numberLocale(), {
+  const abs = Math.abs(value);
+  if (abs < 1000) return Math.trunc(value).toLocaleString(numberLocale());
+  // Tronca a 1 decimale nella scala compatta (k/Mln/…) prima di formattare,
+  // così Intl non arrotonda per eccesso.
+  const exp = Math.min(4, Math.floor(Math.log10(abs) / 3));
+  const unit = 1000 ** exp;
+  const truncated = (Math.trunc((value / unit) * 10) / 10) * unit;
+  return truncated.toLocaleString(numberLocale(), {
     notation: "compact",
     maximumFractionDigits: 1,
   });

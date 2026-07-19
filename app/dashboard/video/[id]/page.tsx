@@ -503,7 +503,7 @@ export default function VideoDetailPage() {
           </Card>
       </div>
 
-      <VideoTrend id={id} />
+      <VideoTrend id={id} views={views} shares={shares} />
 
       <p className="text-xs text-zinc-600">
         {t(
@@ -586,7 +586,16 @@ function TrendStat({
 }
 
 /** Curve ricostruite dagli snapshot per singolo video: views e share rate. */
-function VideoTrend({ id }: { id: string }) {
+function VideoTrend({
+  id,
+  views,
+  shares,
+}: {
+  id: string;
+  /** Contatori live del video: usati per "attuale" così coincide col resto della pagina. */
+  views: number;
+  shares: number;
+}) {
   const t = useT();
   const data = useVideoHistory(id);
   if (!data) return null;
@@ -628,7 +637,12 @@ function VideoTrend({ id }: { id: string }) {
     value: p.views ? p.shares / p.views : 0,
   }));
 
-  // Velocità: views nell'ultima ora (ultimo valore meno quello ~1h prima).
+  // "Attuale" usa i contatori LIVE del video (come il resto della pagina), non
+  // l'ultimo snapshot (che può avere qualche minuto di ritardo): così lo share
+  // rate qui coincide con quello del confronto.
+  const currentShare = views ? shares / views : 0;
+
+  // Velocità: views nell'ultima ora = views live meno quelle di ~1h fa (snapshot).
   const last = series[series.length - 1];
   const hourAgo = last.t - 3_600_000;
   let base = series[0];
@@ -636,8 +650,7 @@ function VideoTrend({ id }: { id: string }) {
     if (p.t <= hourAgo) base = p;
     else break;
   }
-  const velocity = Math.max(0, last.views - base.views);
-  const currentShare = last.views ? last.shares / last.views : 0;
+  const velocity = Math.max(0, views - base.views);
 
   return (
     <Card title={t("Trend over time")}>

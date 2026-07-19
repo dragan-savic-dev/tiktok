@@ -7,6 +7,7 @@ import {
   CommentIcon,
   EyeIcon,
   HeartIcon,
+  PlayIcon,
   ShareIcon,
 } from "@/app/components/icons";
 import { Card } from "@/app/components/card";
@@ -20,10 +21,20 @@ import {
   formatCompact,
   formatPercent,
   perVideoAverage,
+  shareRateTier,
+  topVideosBy,
+  videoShareRate,
   videoTitle,
 } from "@/lib/metrics";
 import { useStats } from "./stats-context";
 import { CHART_COLORS, ErrorBanner, Loading } from "./shared";
+
+// Semaforo share rate (verde ≥3% / giallo 2-3% / rosso <2%).
+const TIER: Record<"high" | "mid" | "low", string> = {
+  high: "text-emerald-400",
+  mid: "text-amber-400",
+  low: "text-tt-pink",
+};
 
 function HeroStat({
   label,
@@ -83,6 +94,13 @@ export default function OverviewPage() {
   const interactionsTotal = interactions.reduce((s, i) => s + i.value, 0);
 
   const recentVideos = videos.slice(0, 10);
+
+  // Video in evidenza: il migliore per views + la classifica per share rate
+  // (la metrica-stella). Per lo share rate si escludono i video con pochissime
+  // views (rumore), con fallback all'elenco completo se restano vuoti.
+  const bestVideo = topVideosBy(videos, (v) => v.view_count ?? 0, 1)[0];
+  const eligible = videos.filter((v) => (v.view_count ?? 0) >= 1000);
+  const topShare = topVideosBy(eligible.length ? eligible : videos, videoShareRate, 5);
 
   return (
     <div className="flex flex-col gap-5">
@@ -225,6 +243,99 @@ export default function OverviewPage() {
         />
         <StatTile label={t("Public videos")} value={totals.videosCounted} exact />
       </div>
+
+      {/* Video in evidenza: miglior video + classifica share rate */}
+      {videos.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {bestVideo && (
+            <Card title={t("Best video")}>
+              <div className="flex gap-4">
+                <Link href={`/dashboard/video/${bestVideo.id}`} className="shrink-0">
+                  {bestVideo.cover_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- cover da CDN TikTok con URL a scadenza
+                    <img
+                      src={bestVideo.cover_image_url}
+                      alt={videoTitle(bestVideo)}
+                      className="h-28 w-20 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="grid h-28 w-20 place-items-center rounded-lg bg-white/5">
+                      <PlayIcon className="h-6 w-6 text-zinc-600" />
+                    </div>
+                  )}
+                </Link>
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <Link
+                    href={`/dashboard/video/${bestVideo.id}`}
+                    className="line-clamp-2 font-semibold text-white hover:text-tt-cyan"
+                    title={videoTitle(bestVideo)}
+                  >
+                    {videoTitle(bestVideo)}
+                  </Link>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-300">
+                    <span className="flex items-center gap-1">
+                      <EyeIcon className="h-3.5 w-3.5 text-tt-cyan" />
+                      <FlashNumber value={bestVideo.view_count ?? 0} format={formatCompact} />
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <HeartIcon className="h-3.5 w-3.5 text-tt-pink" />
+                      <FlashNumber value={bestVideo.like_count ?? 0} format={formatCompact} />
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ShareIcon className="h-3.5 w-3.5 text-tt-cyan" />
+                      <FlashNumber value={bestVideo.share_count ?? 0} format={formatCompact} />
+                    </span>
+                    <span
+                      className={`flex items-center gap-1.5 font-semibold ${TIER[shareRateTier(videoShareRate(bestVideo))]}`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+                      <FlashNumber
+                        value={videoShareRate(bestVideo)}
+                        format={(f) => formatPercent(f, 1)}
+                      />
+                    </span>
+                  </div>
+                  <Link
+                    href={`/dashboard/video/${bestVideo.id}`}
+                    className="mt-auto w-fit text-xs font-medium text-tt-cyan hover:text-white"
+                  >
+                    {t("Details")} →
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <Card title={t("Top by share rate")}>
+            {topShare.length === 0 ? (
+              <p className="text-sm text-zinc-500">{t("No videos available.")}</p>
+            ) : (
+              <ol className="flex flex-col gap-2.5">
+                {topShare.map((v, i) => (
+                  <li key={v.id} className="flex items-center gap-3">
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/5 text-xs font-semibold text-zinc-400">
+                      {i + 1}
+                    </span>
+                    <Link
+                      href={`/dashboard/video/${v.id}`}
+                      className="min-w-0 flex-1 truncate text-sm font-medium text-white hover:text-tt-cyan"
+                      title={videoTitle(v)}
+                    >
+                      {videoTitle(v)}
+                    </Link>
+                    <span
+                      className={`flex shrink-0 items-center gap-1.5 text-sm font-semibold tabular-nums ${TIER[shareRateTier(videoShareRate(v))]}`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+                      <FlashNumber value={videoShareRate(v)} format={(f) => formatPercent(f, 1)} />
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        </div>
+      )}
 
       {/* Ultimi video */}
       <Card

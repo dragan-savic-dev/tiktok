@@ -3,13 +3,15 @@
 // chiave. Il dizionario `it` mappa "testo inglese" -> "testo italiano"; se una
 // chiave manca, si mostra l'inglese (fallback naturale, niente stringhe rotte).
 
-export type Locale = "en" | "it";
-export const LOCALES: Locale[] = ["en", "it"];
+import { es } from "./es";
+
+export type Locale = "en" | "it" | "es";
+export const LOCALES: Locale[] = ["en", "it", "es"];
 export const DEFAULT_LOCALE: Locale = "en";
 export const LOCALE_COOKIE = "locale";
 
 export function isLocale(v: unknown): v is Locale {
-  return v === "en" || v === "it";
+  return v === "en" || v === "it" || v === "es";
 }
 
 /** Dizionario Italiano: chiave = testo inglese (fonte), valore = italiano. */
@@ -93,6 +95,9 @@ export const it: Record<string, string> = {
   "Latest videos": "Ultimi video",
   "See all": "Vedi tutti",
   "No public videos found.": "Nessun video pubblico trovato.",
+  "Best video": "Miglior video",
+  "Top by share rate": "Top per share rate",
+  Details: "Dettagli",
 
   // --- Lista video ---
   "All videos": "Tutti i video",
@@ -196,8 +201,11 @@ export const it: Record<string, string> = {
     "quanta parte delle visualizzazioni arriva dai 10 video migliori",
 };
 
+// Dizionari per lingua (l'inglese è la fonte: nessun dizionario, fallback alla
+// chiave). Lo spagnolo vive in ./es.ts.
+const DICTS: Record<Locale, Record<string, string>> = { en: {}, it, es };
+
 /** Traduce `en` nella lingua data (fallback: l'inglese stesso). */
 export function translate(locale: Locale, en: string): string {
-  if (locale === "it") return it[en] ?? en;
-  return en;
+  return DICTS[locale]?.[en] ?? en;
 }

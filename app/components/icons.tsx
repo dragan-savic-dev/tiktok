@@ -203,3 +203,11 @@ export function RefreshIcon(props: IconProps) {
     </StrokeIcon>
   );
 }
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </StrokeIcon>
+  );
+}
