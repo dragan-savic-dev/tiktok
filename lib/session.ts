@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
-import { appUrl, refreshAccessToken, type TokenResponse } from "./tiktok";
-import { saveUserToken } from "./users";
+import { appUrl, type TokenResponse } from "./tiktok";
+import { getValidAccessTokenFor, persistToken } from "./token";
 
 const ACCESS_COOKIE = "tt_access_token";
 const REFRESH_COOKIE = "tt_refresh_token";
@@ -12,11 +12,6 @@ export const VERIFIER_COOKIE = "tt_oauth_verifier";
 // Rinnova l'access token quando mancano meno di 2 minuti alla scadenza,
 // così nessuna richiesta parte con un token sul punto di morire.
 const REFRESH_MARGIN_MS = 2 * 60 * 1000;
-
-// Se più richieste concorrenti trovano il token scaduto, condividono lo
-// stesso refresh: TikTok può ruotare il refresh token e una seconda
-// chiamata con quello vecchio invaliderebbe la sessione.
-const refreshInFlight = new Map<string, Promise<TokenResponse>>();
 
 function cookieOptions(maxAge: number) {
   return {
@@ -39,12 +34,9 @@ export async function setAuthCookies(token: TokenResponse): Promise<void> {
   );
   store.set(OPEN_ID_COOKIE, token.open_id, cookieOptions(token.refresh_expires_in));
 
-  // Persiste l'access token per la raccolta in background (best-effort).
-  void saveUserToken(
-    token.open_id,
-    token.access_token,
-    Date.now() + token.expires_in * 1000,
-  );
+  // Persiste l'intero token (access + refresh) nello store server-side, fonte
+  // unica del rinnovo per cron e dashboard (best-effort).
+  void persistToken(token);
 }
 
 export async function clearAuthCookies(): Promise<void> {
@@ -65,9 +57,11 @@ export async function getOpenId(): Promise<string | null> {
 }
 
 /**
- * Ritorna un access token valido, rinnovandolo in automatico col refresh
- * token quando serve. Va chiamata solo da route handler o server action
- * (setta cookie). Ritorna null se la sessione non è recuperabile.
+ * Ritorna un access token valido, rinnovandolo in automatico quando serve. Va
+ * chiamata solo da route handler o server action (setta cookie). Il cookie
+ * access è solo una cache veloce: il rinnovo vero passa dallo store server-side
+ * (lib/token.ts), unica fonte del refresh token, così browser e cron non si
+ * invalidano a vicenda. Ritorna null se la sessione non è recuperabile.
  */
 export async function getValidAccessToken(): Promise<string | null> {
   const store = await cookies();
@@ -76,21 +70,15 @@ export async function getValidAccessToken(): Promise<string | null> {
 
   if (access && Date.now() < expiresAt - REFRESH_MARGIN_MS) return access;
 
-  const refresh = store.get(REFRESH_COOKIE)?.value;
-  if (!refresh) return null;
+  const openId = store.get(OPEN_ID_COOKIE)?.value;
+  if (!openId) return null;
 
-  try {
-    let pending = refreshInFlight.get(refresh);
-    if (!pending) {
-      pending = refreshAccessToken(refresh).finally(() =>
-        refreshInFlight.delete(refresh),
-      );
-      refreshInFlight.set(refresh, pending);
-    }
-    const token = await pending;
-    await setAuthCookies(token);
-    return token.access_token;
-  } catch {
-    return null;
-  }
+  const token = await getValidAccessTokenFor(openId);
+  if (!token) return null;
+
+  // Aggiorna solo la cache del cookie access; il refresh token resta lato server.
+  const maxAge = Math.max(0, Math.floor((token.expiresAt - Date.now()) / 1000));
+  store.set(ACCESS_COOKIE, token.accessToken, cookieOptions(maxAge));
+  store.set(EXPIRES_COOKIE, String(token.expiresAt), cookieOptions(maxAge));
+  return token.accessToken;
 }
