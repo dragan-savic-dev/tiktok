@@ -133,6 +133,7 @@ export const es: Record<string, string> = {
 
   // --- Crecimiento ---
   today: "hoy",
+  now: "ahora",
   "7 days": "7 días",
   "30 days": "30 días",
   "90 days": "90 días",

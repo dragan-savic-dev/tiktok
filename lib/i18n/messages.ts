@@ -147,6 +147,7 @@ export const it: Record<string, string> = {
 
   // --- Crescita ---
   today: "oggi",
+  now: "adesso",
   "7 days": "7 giorni",
   "30 days": "30 giorni",
   "90 days": "90 giorni",

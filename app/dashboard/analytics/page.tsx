@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/app/components/card";
 import BarChart, { type BarDatum } from "@/app/components/bar-chart";
@@ -261,6 +261,28 @@ export default function AnalyticsPage() {
         )}
       </p>
 
+      {/* Statistiche chiave in cima */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <MiniStat
+          label="Total interactions"
+          value={totals.likes + totals.comments + totals.shares}
+          format={formatCompact}
+        />
+        <MiniStat
+          label="Best video (views)"
+          value={bestVideo?.view_count ?? 0}
+          format={formatCompact}
+          href={bestVideo ? `/dashboard/video/${bestVideo.id}` : undefined}
+          hint={bestVideo ? videoTitle(bestVideo) : undefined}
+        />
+        <MiniStat
+          label="Views from top 10"
+          value={concentration}
+          format={(f) => formatPercent(f, 0)}
+          hint={t("how much of the views comes from the 10 best videos")}
+        />
+      </div>
+
       {/* Ultimi N video: uno per riga, a tutta larghezza */}
       <Card title={`${t("Views · last")} ${recent.length} ${t("videos")}`}>
         <BarChart bars={viewBars} color={CHART_COLORS.cyan} />
@@ -297,27 +319,6 @@ export default function AnalyticsPage() {
           <TopVideoList videos={videos} />
         )}
       </Card>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MiniStat
-          label="Total interactions"
-          value={totals.likes + totals.comments + totals.shares}
-          format={formatCompact}
-        />
-        <MiniStat
-          label="Best video (views)"
-          value={bestVideo?.view_count ?? 0}
-          format={formatCompact}
-          href={bestVideo ? `/dashboard/video/${bestVideo.id}` : undefined}
-          hint={bestVideo ? videoTitle(bestVideo) : undefined}
-        />
-        <MiniStat
-          label="Views from top 10"
-          value={concentration}
-          format={(f) => formatPercent(f, 0)}
-          hint={t("how much of the views comes from the 10 best videos")}
-        />
-      </div>
     </div>
   );
 }
@@ -328,14 +329,31 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(
     null,
   );
+  // Giorno/ora correnti (client-only per evitare mismatch SSR), aggiornati ogni
+  // minuto: evidenziano lo slot "adesso" nella heatmap.
+  const [now, setNow] = useState<{ day: number; hour: number } | null>(null);
+  useEffect(() => {
+    const update = () => {
+      const d = new Date();
+      setNow({ day: (d.getDay() + 6) % 7, hour: d.getHours() });
+    };
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, []);
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[760px]">
         <div className="grid grid-cols-[2.5rem_repeat(24,1fr)] gap-1 text-[10px] text-zinc-500">
           <span />
           {HOUR_BUCKETS.map((b) => (
-            <span key={b.label} className="text-center tabular-nums">
-              {b.from % 2 === 0 ? b.from : ""}
+            <span
+              key={b.label}
+              className={`text-center tabular-nums ${
+                now?.hour === b.from ? "font-bold text-tt-cyan" : ""
+              }`}
+            >
+              {b.from}
             </span>
           ))}
         </div>
@@ -344,9 +362,16 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
             key={WEEKDAYS[di]}
             className="mt-1 grid grid-cols-[2.5rem_repeat(24,1fr)] items-center gap-1"
           >
-            <span className="text-[10px] text-zinc-500">{t(WEEKDAYS[di])}</span>
+            <span
+              className={`text-[10px] ${
+                now?.day === di ? "font-bold text-tt-cyan" : "text-zinc-500"
+              }`}
+            >
+              {t(WEEKDAYS[di])}
+            </span>
             {row.map((v, hi) => {
               const intensity = v > 0 ? 0.12 + 0.88 * (v / max) : 0;
+              const isNow = now?.day === di && now?.hour === hi;
               const label = `${t(WEEKDAYS[di])} ${HOUR_BUCKETS[hi].from}–${HOUR_BUCKETS[hi].to} · ${formatCompact(
                 Math.round(v),
               )} ${t("avg views")}`;
@@ -354,12 +379,16 @@ function Heatmap({ cells, max }: { cells: number[][]; max: number }) {
                 <div
                   key={HOUR_BUCKETS[hi].label}
                   role="img"
-                  aria-label={label}
+                  aria-label={isNow ? `${label} (${t("now")})` : label}
                   onMouseMove={(e) =>
                     setTip({ x: e.clientX, y: e.clientY, text: label })
                   }
                   onMouseLeave={() => setTip(null)}
-                  className="h-8 rounded-[4px] border border-white/5 transition-colors hover:border-white/25 sm:h-9"
+                  className={`h-8 rounded-[4px] border transition-colors sm:h-9 ${
+                    isNow
+                      ? "border-tt-pink ring-2 ring-inset ring-tt-pink"
+                      : "border-white/5 hover:border-white/25"
+                  }`}
                   style={{
                     backgroundColor:
                       v > 0
