@@ -23,6 +23,44 @@ export function readLocalSnapshots(): HistorySnapshot[] {
   }
 }
 
+/** Svuota lo storico locale (dopo un sync riuscito verso il DB). */
+export function clearLocalSnapshots(): void {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // ignora
+  }
+}
+
+/**
+ * Carica gli snapshot accumulati in localStorage nello storico DB del server
+ * ("sync dal telefono"). Ritorna quanti ne ha inseriti. Idempotente lato
+ * server. Non svuota il locale: lo decide il chiamante dopo il successo.
+ */
+export async function syncLocalSnapshots(): Promise<{
+  imported: number;
+  received: number;
+}> {
+  const snapshots = readLocalSnapshots();
+  if (snapshots.length === 0) return { imported: 0, received: 0 };
+  const res = await fetch("/api/history/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ snapshots }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      typeof body?.message === "string" ? body.message : `HTTP ${res.status}`,
+    );
+  }
+  const body = await res.json();
+  return {
+    imported: body.imported ?? 0,
+    received: body.received ?? snapshots.length,
+  };
+}
+
 /** Registra uno snapshot dai dati live, al più una volta al minuto. */
 export function recordLocalSnapshot(stats: StatsResponse): void {
   const t = stats.fetchedAt;

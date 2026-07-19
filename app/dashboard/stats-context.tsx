@@ -58,7 +58,9 @@ export default function StatsProvider({ children }: { children: React.ReactNode 
       lastRef.current = body as StatsResponse;
       setStats(body as StatsResponse);
       setError(null);
-      // Alimenta lo storico locale (localStorage) per la pagina Crescita.
+      // Alimenta sempre lo storico locale (localStorage): è la registrazione
+      // continua al minuto sul dispositivo. Il DB si aggiorna via poll (ad app
+      // aperta), cron giornaliero e bottone "Sincronizza" nella pagina Crescita.
       recordLocalSnapshot(body as StatsResponse);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(body));

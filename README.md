@@ -36,6 +36,36 @@ npm run dev
 
 Apri l'URL **https del tunnel** (non localhost, altrimenti i cookie `secure` non vengono salvati) e premi "Continua con TikTok".
 
+## Database (Neon) — opzionale ma consigliato
+
+Di default lo storico (snapshot della sezione **Crescita**, conteggi "salvati") vive su filesystem + `localStorage`, che su hosting serverless è effimero/per-dispositivo. Configurando un database **Neon** (Postgres serverless) lo storico diventa robusto, per-utente e sopravvive ai riavvii — ed è la base per le curve per-singolo-video (share rate nel tempo, velocità, ondate).
+
+**Su Vercel (integrazione Neon):** collega Neon dal Marketplace/Storage del progetto — le variabili (`DATABASE_URL` o `POSTGRES_URL`, incluse le varianti unpooled) vengono iniettate automaticamente; il codice le riconosce da solo (`lib/db.ts`). In locale prendi la stessa stringa con `vercel env pull .env.local`, oppure incollala a mano:
+
+```env
+DATABASE_URL=postgresql://user:password@ep-xxx-pooler.<region>.aws.neon.tech/neondb?sslmode=require
+```
+
+Passi:
+
+1. (Se non su Vercel) crea un progetto gratuito su <https://neon.tech> e copia la **pooled connection string** (contiene `?sslmode=require`).
+2. Riavvia `npm run dev`. Lo schema (`users`, `account_snapshots`, `videos`, `video_snapshots`, `video_saved`, `video_notes`) viene creato automaticamente al primo accesso al DB.
+3. Nella pagina **Crescita** compare **"Sincronizza dal telefono"**: carica nel DB gli snapshot accumulati in `localStorage` su quel dispositivo. È **additivo e idempotente** (ON CONFLICT sul timestamp): il client **continua** a salvare in `localStorage` (registrazione continua al minuto) e puoi ripremere Sync quando vuoi per aggiornare il DB.
+
+In DB finiscono **solo i dati storicizzati nel tempo** (serie temporali, salvati, note): i valori live delle API TikTok si prendono sempre freschi e non si duplicano.
+
+Lo storico del DB arriva quindi da tre fonti che si fondono senza duplicati: poll ad app aperta (1/min), cron giornaliero (ad app chiusa) e Sync manuale dal `localStorage`.
+
+### Raccolta ad app chiusa (Vercel Cron)
+
+Su Vercel il filesystem è effimero e il processo non è persistente, quindi:
+
+- gli **access token** degli utenti vengono salvati nel DB (tabella `users`), non su disco;
+- un **Vercel Cron** (`vercel.json` → `/api/cron/collect`) storicizza anche quando nessuno ha l'app aperta. L'endpoint accetta solo la chiamata di Vercel se imposti la variabile **`CRON_SECRET`** (Vercel la inoltra come `Authorization: Bearer …`).
+- Con l'app aperta, gli snapshot si scrivono comunque a ogni poll (throttlati a 1/min), quindi ad app aperta il DB è aggiornato al minuto a prescindere dal cron.
+
+> Schedule attuale: **`0 3 * * *`** (una volta al giorno), compatibile con il piano **Vercel Hobby** (i cron Hobby girano max 1/giorno). Il fine-grained lo copri col poll ad app aperta e col bottone Sync. Se passi a **Vercel Pro** puoi mettere `* * * * *` per la raccolta al minuto anche ad app chiusa.
+
 ## Come funziona
 
 - `app/api/auth/login` → redirect all'authorize di TikTok (`/v2/auth/authorize/`) con `state` anti-CSRF in cookie.

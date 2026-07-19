@@ -62,6 +62,11 @@ export interface StatsResponse {
   /** Totale "salvati" via scraping delle pagine pubbliche; null se non disponibile. */
   saved: number | null;
   fetchedAt: number;
+  /**
+   * true quando il server storicizza su DB (Neon): in tal caso il client smette
+   * di salvare snapshot in localStorage (ci pensa il server ogni minuto).
+   */
+  db?: boolean;
 }
 
 /** Fotografia delle statistiche in un istante, salvata nello store storico. */
@@ -109,4 +114,6 @@ export interface HistoryResponse {
   firstAt: number | null;
   /** Numero totale di snapshot memorizzati per l'utente. */
   count: number;
+  /** true se lo storico è servito dal DB (Neon): abilita il bottone di sync. */
+  dbEnabled: boolean;
 }

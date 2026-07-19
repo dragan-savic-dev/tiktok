@@ -1,7 +1,9 @@
 import { getOrFetch } from "./cache";
+import { hasDb, upsertUser } from "./db";
 import { recordSnapshot } from "./history";
 import { aggregateStats, getAllVideoStats, getUserInfo } from "./tiktok";
 import { getSavedCounts } from "./tiktok-scrape";
+import { recordVideoSnapshots } from "./video-snapshots";
 import type { StatsResponse } from "./types";
 
 // TTL sotto i 5s del polling, così ogni ciclo del client trova dati freschi
@@ -55,6 +57,7 @@ export async function collectStats(
     videos: videosWithSaved,
     saved: savedCounts.total,
     fetchedAt: Date.now(),
+    db: hasDb(),
   };
 
   // Alimenta lo storico (best-effort: non deve mai rompere la risposta).
@@ -73,6 +76,11 @@ export async function collectStats(
   } catch {
     // persistenza best-effort
   }
+
+  // Storicizzazione su DB (best-effort, no-op senza DATABASE_URL): profilo
+  // utente + serie temporale per singolo video (throttlata internamente).
+  void upsertUser(openId, user);
+  void recordVideoSnapshots(openId, videosWithSaved);
 
   return payload;
 }
