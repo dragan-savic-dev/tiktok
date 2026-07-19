@@ -45,12 +45,19 @@ export function ensureSchema(): Promise<void> {
         display_name text,
         access_token text,
         token_expires_at bigint,
+        refresh_token text,
+        refresh_expires_at bigint,
         created_at timestamptz DEFAULT now(),
         last_seen_at timestamptz DEFAULT now()
       )`;
       // Evoluzione schema: aggiunge le colonne token se la tabella preesisteva.
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS access_token text`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires_at bigint`;
+      // Il refresh token abilita la raccolta autonoma (rinnovo lato server ad
+      // app chiusa). Prima non veniva salvato: le righe preesistenti restano
+      // senza finché l'utente non rifà il login.
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_token text`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS refresh_expires_at bigint`;
       await sql`CREATE TABLE IF NOT EXISTS account_snapshots (
         open_id text NOT NULL,
         t bigint NOT NULL,
