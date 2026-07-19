@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { recordLocalSnapshot } from "@/lib/local-history";
 import type { StatsResponse } from "@/lib/types";
 
 const POLL_MS = 5000;
@@ -58,10 +57,9 @@ export default function StatsProvider({ children }: { children: React.ReactNode 
       lastRef.current = body as StatsResponse;
       setStats(body as StatsResponse);
       setError(null);
-      // Alimenta sempre lo storico locale (localStorage): è la registrazione
-      // continua al minuto sul dispositivo. Il DB si aggiorna via poll (ad app
-      // aperta), cron giornaliero e bottone "Sincronizza" nella pagina Crescita.
-      recordLocalSnapshot(body as StatsResponse);
+      // Il client SOLO mostra: nessuna registrazione storica qui. Lo storico lo
+      // scrive il collettore sul server (Neon). Teniamo solo l'ultimo stato in
+      // cache per idratare subito la UI al rientro (non è storico).
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(body));
       } catch {

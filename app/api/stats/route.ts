@@ -3,9 +3,10 @@ import { collectStats } from "@/lib/collect";
 import { getOpenId, getValidAccessToken } from "@/lib/session";
 import { TikTokApiError } from "@/lib/tiktok";
 
-// Il ciclo che rinnova i "salvati" scarica un lotto di pagine con delle pause:
-// su Vercel il default (10s) potrebbe non bastare con molti video.
-export const maxDuration = 60;
+// Endpoint di sola lettura per il client (poll ogni 5s): dati live dell'API
+// TikTok + "salvati" dallo store. Nessuno scraping qui (lo fa il collettore),
+// quindi risposta rapida; il margine copre solo la paginazione di video/list.
+export const maxDuration = 30;
 
 export async function GET() {
   const accessToken = await getValidAccessToken();
@@ -15,7 +16,12 @@ export async function GET() {
   }
 
   try {
-    const payload = await collectStats(openId, accessToken);
+    // Client: solo dati live dell'API TikTok + "salvati" dallo store. Niente
+    // scraping né storicizzazione: quelli li fa il collettore sul server.
+    const payload = await collectStats(openId, accessToken, {
+      scrape: false,
+      record: false,
+    });
     return NextResponse.json(payload);
   } catch (err) {
     if (err instanceof TikTokApiError && err.isAuthError) {

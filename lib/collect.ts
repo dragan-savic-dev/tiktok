@@ -1,8 +1,9 @@
 import { getOrFetch } from "./cache";
 import { hasDb, upsertUser } from "./db";
 import { recordSnapshot } from "./history";
+import { readSavedStore } from "./saved-store";
 import { aggregateStats, getAllVideoStats, getUserInfo } from "./tiktok";
-import { getSavedCounts } from "./tiktok-scrape";
+import { getSavedCounts, type SavedCounts } from "./tiktok-scrape";
 import { recordVideoSnapshots } from "./video-snapshots";
 import type { StatsResponse } from "./types";
 
@@ -23,14 +24,40 @@ function videoTtlMs(videoCount: number): number {
   return 30_000;
 }
 
+export interface CollectOptions {
+  /**
+   * true: aggiorna i "salvati" via scraping delle pagine pubbliche (SOLO server).
+   * false: li legge dallo store già popolato dal collettore (per il client).
+   */
+  scrape?: boolean;
+  /**
+   * true: storicizza (snapshot account + per-video, upsert utente) — lavoro del
+   * collettore. false: solo lettura per il display (il client non scrive nulla).
+   */
+  record?: boolean;
+}
+
+/** Ricostruisce i conteggi "salvati" dallo store, senza scraping (per il client). */
+async function savedFromStore(openId: string): Promise<SavedCounts> {
+  const map = await readSavedStore(openId);
+  const values = Object.values(map);
+  return {
+    total: values.length > 0 ? values.reduce((sum, n) => sum + n, 0) : null,
+    byVideo: values.length > 0 ? map : null,
+  };
+}
+
 /**
- * Scarica (via cache condivisa) le statistiche complete e ne registra uno
- * snapshot nello storico (throttlato a 1/min). Usata sia da /api/stats sia dal
- * job in background, così condividono cache e logica.
+ * Scarica le statistiche complete (via cache condivisa) e — se richiesto — le
+ * storicizza. Il collettore la usa con scrape+record (fa tutto); il client
+ * (/api/stats) con scrape:false e record:false, quindi mostra solo i dati live
+ * dell'API TikTok + i "salvati" già raccolti dal server, senza scrapare né
+ * scrivere.
  */
 export async function collectStats(
   openId: string,
   accessToken: string,
+  { scrape = true, record = true }: CollectOptions = {},
 ): Promise<StatsResponse> {
   const user = await getOrFetch(`user:${openId}`, USER_TTL_MS, () =>
     getUserInfo(accessToken),
@@ -41,9 +68,13 @@ export async function collectStats(
     () => getAllVideoStats(accessToken),
   );
   const totals = aggregateStats(videos);
-  const savedCounts = await getOrFetch(`saved:${openId}`, SAVED_TTL_MS, () =>
-    getSavedCounts(openId, videos),
-  );
+
+  // Scraping dei "salvati" solo lato server: il client li legge dallo store.
+  const savedCounts = scrape
+    ? await getOrFetch(`saved:${openId}`, SAVED_TTL_MS, () =>
+        getSavedCounts(openId, videos),
+      )
+    : await savedFromStore(openId);
 
   // Arricchisce ogni video col proprio conteggio "salvati" su una copia: la
   // lista in cache (TTL diverso) non va mutata.
@@ -60,27 +91,26 @@ export async function collectStats(
     db: hasDb(),
   };
 
-  // Alimenta lo storico (best-effort: non deve mai rompere la risposta).
-  try {
-    await recordSnapshot(openId, {
-      t: payload.fetchedAt,
-      followers: user.follower_count ?? 0,
-      following: user.following_count ?? 0,
-      likes: user.likes_count ?? 0,
-      views: totals.views,
-      comments: totals.comments,
-      shares: totals.shares,
-      saved: savedCounts.total,
-      videos: totals.videosCounted,
-    });
-  } catch {
-    // persistenza best-effort
+  // Storicizzazione: solo quando richiesto (collettore). Il client non scrive.
+  if (record) {
+    try {
+      await recordSnapshot(openId, {
+        t: payload.fetchedAt,
+        followers: user.follower_count ?? 0,
+        following: user.following_count ?? 0,
+        likes: user.likes_count ?? 0,
+        views: totals.views,
+        comments: totals.comments,
+        shares: totals.shares,
+        saved: savedCounts.total,
+        videos: totals.videosCounted,
+      });
+    } catch {
+      // persistenza best-effort
+    }
+    void upsertUser(openId, user);
+    void recordVideoSnapshots(openId, videosWithSaved);
   }
-
-  // Storicizzazione su DB (best-effort, no-op senza DATABASE_URL): profilo
-  // utente + serie temporale per singolo video (throttlata internamente).
-  void upsertUser(openId, user);
-  void recordVideoSnapshots(openId, videosWithSaved);
 
   return payload;
 }

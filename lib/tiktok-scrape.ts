@@ -3,14 +3,11 @@ import type { VideoStats } from "./types";
 
 // Il conteggio "salvati" (collectCount) non è esposto dalla Display API
 // ufficiale: lo ricaviamo dal JSON incorporato nelle pagine pubbliche dei
-// video. Nessun limite sul numero di video, ma per non farsi bloccare da
-// TikTok non si scaricano mai tutte le pagine in un colpo: a ogni ciclo
-// (~1/min, vedi TTL in collect.ts) si aggiorna solo un piccolo lotto,
-// ruotando sui video col dato più vecchio. I valori già letti restano validi
-// tra un giro e l'altro, quindi a regime la mappa è sempre completa. I
-// conteggi noti vengono anche persistiti su disco (lib/saved-store.ts): dopo
-// un riavvio tornano subito disponibili, così un video già letto non regredisce
-// mai a N/D.
+// video. Lo scraping lo fa SOLO il collettore sul server, ogni 10 min: a ogni
+// ciclo si aggiornano TUTTI i video (con share_url), ma in modo cadenzato
+// (gruppetti in parallelo con pause) per non farsi bloccare da TikTok. I
+// conteggi noti vengono persistiti (lib/saved-store.ts) e la guardia monotòna
+// evita regressioni: un video già letto non torna mai a N/D.
 
 const BROWSER_HEADERS = {
   "User-Agent":
@@ -19,10 +16,10 @@ const BROWSER_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
-// Pagine per ciclo e parallelismo: ~12 richieste al minuto verso tiktok.com,
-// in gruppetti da 4 con una pausa tra l'uno e l'altro — ben sotto le soglie
-// che fanno scattare i blocchi anti-bot.
-const BATCH_SIZE = 12;
+// Si scaricano TUTTI i video, ma in gruppetti da 4 in parallelo con una pausa
+// tra un gruppo e l'altro: il ritmo verso tiktok.com resta basso e sotto le
+// soglie anti-bot. Con lo scraping ora solo ogni 10 min, la media di richieste
+// è più bassa di prima.
 const CONCURRENCY = 4;
 const CHUNK_PAUSE_MS = 500;
 
@@ -139,14 +136,9 @@ export async function getSavedCounts(
     if (!ids.has(id)) state.delete(id);
   }
 
-  // Lotto di questo giro: prima i video mai letti, poi quelli più "vecchi".
-  const batch = videos
-    .filter((v) => v.share_url)
-    .sort(
-      (a, b) =>
-        (state.get(a.id)?.attemptedAt ?? 0) - (state.get(b.id)?.attemptedAt ?? 0),
-    )
-    .slice(0, BATCH_SIZE);
+  // Tutti i video con share_url: niente più lotto ridotto. Lo scraping gira solo
+  // ogni 10 min (lato server), quindi c'è tempo per aggiornarli tutti a ogni giro.
+  const batch = videos.filter((v) => v.share_url);
 
   for (let i = 0; i < batch.length; i += CONCURRENCY) {
     if (i > 0) await sleep(CHUNK_PAUSE_MS);
