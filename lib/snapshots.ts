@@ -8,8 +8,14 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 export const HOUR_MS = 60 * 60 * 1000;
 /** Cadenza minima tra due snapshot dello stesso utente. */
 export const SNAPSHOT_INTERVAL_MS = 60_000;
-/** Retention e tetto assoluto come rete di sicurezza. */
-export const RETENTION_DAYS = 120;
+/**
+ * Retention e tetto assoluto come rete di sicurezza. Un anno intero: è ciò che
+ * abilita il filtro "12 mesi" dei grafici (con meno giorni i dati più vecchi
+ * verrebbero prunati e la finestra lunga resterebbe vuota). Lo storico oltre 14
+ * giorni è comunque già downsamplato a granularità giornaliera (vedi
+ * compactSnapshots), quindi un anno resta poche centinaia di punti.
+ */
+export const RETENTION_DAYS = 365;
 export const MAX_SNAPSHOTS = 20_000;
 
 export type HistoryGranularity = "day" | "hour";

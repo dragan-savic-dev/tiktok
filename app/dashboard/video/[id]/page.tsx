@@ -6,9 +6,10 @@ import { useParams } from "next/navigation";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import { useT } from "@/app/components/locale-provider";
+import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
-import LineChart from "@/app/components/line-chart";
+import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import {
   BookmarkIcon,
   CloseIcon,
@@ -27,7 +28,15 @@ import {
   videoTitle,
 } from "@/lib/metrics";
 import { useStats } from "../../stats-context";
-import { CHART_COLORS, ErrorBanner, Loading } from "../../shared";
+import {
+  CHART_COLORS,
+  ErrorBanner,
+  HOURLY_MAX_DAYS,
+  Loading,
+  METRIC_COLORS,
+  ModePicker,
+  RangePicker,
+} from "../../shared";
 
 const REFRESH_MS = 5000;
 
@@ -42,6 +51,13 @@ const TIER_DOT = {
   mid: "bg-amber-400",
   low: "bg-tt-pink",
 } as const;
+
+/** "+1.234" / "−1.234" (nessun segno per lo zero) per la modalità Variazione. */
+function formatSigned(n: number): string {
+  if (n === 0) return "0";
+  const sign = n > 0 ? "+" : "−";
+  return `${sign}${Math.abs(n).toLocaleString("it-IT")}`;
+}
 
 /**
  * Contatori freschi del singolo video via /api/video/[id] (video/query, TTL
@@ -458,7 +474,10 @@ export default function VideoDetailPage() {
           </Card>
       </div>
 
-      <VideoTrend id={id} views={views} shares={shares} />
+      <VideoTrend
+        id={id}
+        live={{ views, likes, comments, shares, saved }}
+      />
 
       <p className="text-xs text-zinc-600">
         {t(
@@ -481,17 +500,21 @@ interface TrendPoint {
 /** Serie temporale del singolo video via /api/video/[id]/history (best-effort). */
 function useVideoHistory(
   id: string,
-): { series: TrendPoint[]; dbEnabled: boolean } | null {
+  days: number,
+): { series: TrendPoint[]; dbEnabled: boolean; days: number } | null {
   const [state, setState] = useState<{
     series: TrendPoint[];
     dbEnabled: boolean;
+    /** Range che ha prodotto questi dati: la vista si formatta su questo, non sul
+     * pulsante appena premuto (evita etichette incoerenti durante il refetch). */
+    days: number;
   } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`/api/video/${id}/history?days=7`, {
+        const res = await fetch(`/api/video/${id}/history?days=${days}`, {
           cache: "no-store",
         });
         if (!res.ok) return;
@@ -500,6 +523,7 @@ function useVideoHistory(
           setState({
             series: Array.isArray(body?.series) ? (body.series as TrendPoint[]) : [],
             dbEnabled: !!body?.dbEnabled,
+            days,
           });
         }
       } catch {
@@ -507,6 +531,8 @@ function useVideoHistory(
       }
     };
     load();
+    // Mantiene i dati precedenti finché il nuovo range non è pronto (niente
+    // sfarfallio); il refetch periodico aggiorna la curva a range invariato.
     const timer = setInterval(() => {
       if (!document.hidden) load();
     }, 60_000);
@@ -514,7 +540,7 @@ function useVideoHistory(
       cancelled = true;
       clearInterval(timer);
     };
-  }, [id]);
+  }, [id, days]);
 
   return state;
 }
@@ -540,54 +566,102 @@ function TrendStat({
   );
 }
 
-/** Curve ricostruite dagli snapshot per singolo video: views e share rate. */
-function VideoTrend({
-  id,
-  views,
-  shares,
-}: {
-  id: string;
-  /** Contatori live del video: usati per "attuale" così coincide col resto della pagina. */
+interface LiveCounters {
   views: number;
+  likes: number;
+  comments: number;
   shares: number;
-}) {
+  /** null = "salvati" non disponibili (scraping bloccato o non ancora letto). */
+  saved: number | null;
+}
+
+/**
+ * Curve ricostruite dagli snapshot per singolo video: andamento di tutte le
+ * metriche (views, like, commenti, condivisioni, salvati) + share rate, con
+ * filtro periodo (7g → 12 mesi) e toggle Totale / Variazione.
+ */
+function VideoTrend({ id, live }: { id: string; live: LiveCounters }) {
   const t = useT();
-  const data = useVideoHistory(id);
-  if (!data) return null;
+  const [days, setDays] = useState(7);
+  const [mode, setMode] = useState<"total" | "delta">("total");
+  const data = useVideoHistory(id, days);
+
+  // La formattazione segue il range dei dati EFFETTIVAMENTE mostrati (data.days),
+  // che durante un cambio filtro resta quello vecchio finché il fetch non è pronto.
+  const shownDays = data?.days ?? days;
+  const hourly = shownDays <= HOURLY_MAX_DAYS;
+  const deltaMode = mode === "delta";
+
+  const controls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <RangePicker days={days} onChange={setDays} />
+      <ModePicker mode={mode} onChange={setMode} hourly={hourly} />
+    </div>
+  );
+  const header = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h3 className="text-sm font-semibold text-white">{t("Trend over time")}</h3>
+      {controls}
+    </div>
+  );
+
+  const message = (text: string) => (
+    <div className="flex flex-col gap-4">
+      {header}
+      <Card>
+        <p className="py-6 text-center text-sm text-zinc-500">{t(text)}</p>
+      </Card>
+    </div>
+  );
+
+  if (!data) return message("Loading history…");
   const { series, dbEnabled } = data;
-
-  if (!dbEnabled) {
-    return (
-      <Card title={t("Trend over time")}>
-        <p className="text-sm text-zinc-500">
-          {t(
-            "Configure the database to record this video's trend over time.",
-          )}
-        </p>
-      </Card>
+  if (!dbEnabled)
+    return message("Configure the database to record this video's trend over time.");
+  if (series.length < 2)
+    return message(
+      "Collecting data: the curve appears after a few readings (one snapshot every ~5 minutes while the video is active).",
     );
-  }
-  if (series.length < 2) {
-    return (
-      <Card title={t("Trend over time")}>
-        <p className="text-sm text-zinc-500">
-          {t(
-            "Collecting data: the curve appears after a few readings (one snapshot every ~5 minutes while the video is active).",
-          )}
-        </p>
-      </Card>
-    );
-  }
 
-  const fmtLabel = (t: number) =>
-    new Date(t).toLocaleString("it-IT", {
-      day: "2-digit",
-      month: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
+  // "13/07" (giornaliero) oppure "13/07 14:00" (orario, finestre corte).
+  const fmtLabel = (ts: number) => {
+    const dte = new Date(ts);
+    const dd = String(dte.getDate()).padStart(2, "0");
+    const mm = String(dte.getMonth() + 1).padStart(2, "0");
+    return hourly
+      ? `${dd}/${mm} ${String(dte.getHours()).padStart(2, "0")}:00`
+      : `${dd}/${mm}`;
+  };
+
+  // Serie di una metrica (salta i punti null, es. salvati N/D).
+  const line = (pick: (p: TrendPoint) => number | null): LinePoint[] =>
+    series.flatMap((p) => {
+      const v = pick(p);
+      return v === null ? [] : [{ label: fmtLabel(p.t), value: v }];
     });
-  const viewsData = series.map((p) => ({ label: fmtLabel(p.t), value: p.views }));
-  const shareData = series.map((p) => ({
+  // Variazione tra bucket consecutivi (per la modalità Variazione).
+  const deltaBars = (points: LinePoint[]): BarDatum[] =>
+    points
+      .slice(1)
+      .map((p, i) => ({ label: p.label, value: p.value - points[i].value }));
+
+  /** Un grafico metrica che segue il toggle Totale / Variazione. */
+  const metricChart = (pick: (p: TrendPoint) => number | null, color: string) => {
+    const points = line(pick);
+    return deltaMode ? (
+      <BarChart
+        bars={deltaBars(points)}
+        color={color}
+        formatValue={formatSigned}
+        height={180}
+      />
+    ) : (
+      <LineChart data={points} color={color} height={180} />
+    );
+  };
+
+  const savedLine = line((p) => p.saved);
+  const shareRateData: LinePoint[] = series.map((p) => ({
     label: fmtLabel(p.t),
     value: p.views ? p.shares / p.views : 0,
   }));
@@ -595,9 +669,10 @@ function VideoTrend({
   // "Attuale" usa i contatori LIVE del video (come il resto della pagina), non
   // l'ultimo snapshot (che può avere qualche minuto di ritardo): così lo share
   // rate qui coincide con quello del confronto.
-  const currentShare = views ? shares / views : 0;
+  const currentShare = live.views ? live.shares / live.views : 0;
 
-  // Velocità: views nell'ultima ora = views live meno quelle di ~1h fa (snapshot).
+  // Velocità (solo con granularità oraria): views nell'ultima ora = views live
+  // meno quelle di ~1h fa. Sui range lunghi (bucket giornalieri) non ha senso.
   const last = series[series.length - 1];
   const hourAgo = last.t - 3_600_000;
   let base = series[0];
@@ -605,49 +680,70 @@ function VideoTrend({
     if (p.t <= hourAgo) base = p;
     else break;
   }
-  const velocity = Math.max(0, views - base.views);
+  const velocity = Math.max(0, live.views - base.views);
 
   return (
-    <Card title={t("Trend over time")}>
-      <div className="flex flex-col gap-5">
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+    <div className="flex flex-col gap-5">
+      {header}
+
+      <div className={`grid gap-3 sm:gap-4 ${hourly ? "grid-cols-2" : "grid-cols-1"}`}>
+        {hourly && (
           <TrendStat
             label="Speed · last hour"
             value={<FlashNumber value={velocity} />}
             hint="views in the last hour"
           />
-          <TrendStat
-            label="Current share rate"
-            value={
-              <span className={TIER_TEXT[shareRateTier(currentShare)]}>
-                <FlashNumber
-                  value={currentShare}
-                  format={(f) => formatPercent(f, 2)}
-                />
-              </span>
-            }
-            hint="shares / views"
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-            {t("Views over time")}
-          </h4>
-          <LineChart data={viewsData} color={CHART_COLORS.cyan} height={180} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-            {t("Share rate over time")}
-          </h4>
-          <LineChart
-            data={shareData}
-            color={CHART_COLORS.pink}
-            height={180}
-            formatValue={(f) => formatPercent(f, 1)}
-          />
-        </div>
+        )}
+        <TrendStat
+          label="Current share rate"
+          value={
+            <span className={TIER_TEXT[shareRateTier(currentShare)]}>
+              <FlashNumber value={currentShare} format={(f) => formatPercent(f, 2)} />
+            </span>
+          }
+          hint="shares / views"
+        />
       </div>
-    </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title={t("Views over time")}>
+          {metricChart((p) => p.views, METRIC_COLORS.views)}
+        </Card>
+        <Card title={t("Likes over time")}>
+          {metricChart((p) => p.likes, METRIC_COLORS.likes)}
+        </Card>
+        <Card title={t("Comments over time")}>
+          {metricChart((p) => p.comments, METRIC_COLORS.comments)}
+        </Card>
+        <Card title={t("Shares over time")}>
+          {metricChart((p) => p.shares, METRIC_COLORS.shares)}
+        </Card>
+      </div>
+
+      {savedLine.length >= 2 && (
+        <Card title={t("Saves over time")}>
+          {deltaMode ? (
+            <BarChart
+              bars={deltaBars(savedLine)}
+              color={METRIC_COLORS.saved}
+              formatValue={formatSigned}
+              height={180}
+            />
+          ) : (
+            <LineChart data={savedLine} color={METRIC_COLORS.saved} height={180} />
+          )}
+        </Card>
+      )}
+
+      <Card title={t("Share rate over time")}>
+        <LineChart
+          data={shareRateData}
+          color={CHART_COLORS.pink}
+          height={180}
+          formatValue={(f) => formatPercent(f, 1)}
+        />
+      </Card>
+    </div>
   );
 }
 

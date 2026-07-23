@@ -109,6 +109,30 @@ async function readSnapshotsDb(
   return rows.map(rowToSnapshot);
 }
 
+/**
+ * Come readSnapshotsDb ma downsamplato a un punto per giorno: l'ultima riga di
+ * ogni giorno (via DISTINCT ON sul bucket giornaliero UTC). Tiene la query a
+ * O(giorni) invece di O(minuti) sulle finestre lunghe (fino a 1 anno = poche
+ * centinaia di righe invece di centinaia di migliaia). I bucket sono UTC: la
+ * ri-bucketizzazione di toSeries usa il fuso locale, ma con ≤1 riga al giorno
+ * l'effetto è al più uno spostamento di confine cosmetico (in produzione il
+ * server gira in UTC, quindi coincidono).
+ */
+async function readDailyDb(
+  openId: string,
+  sinceMs: number,
+): Promise<HistorySnapshot[]> {
+  await ensureSchema();
+  const rows = (await sql!`
+    SELECT DISTINCT ON (t / 86400000)
+      t, followers, following, likes, views, comments, shares, saved, videos
+    FROM account_snapshots
+    WHERE open_id = ${openId} AND t >= ${sinceMs}
+    ORDER BY (t / 86400000), t DESC
+  `) as Record<string, unknown>[];
+  return rows.map(rowToSnapshot).sort((a, b) => a.t - b.t);
+}
+
 // --- API pubblica ------------------------------------------------------------
 
 /**
@@ -229,27 +253,36 @@ export async function getHistory(
 ): Promise<HistoryResponse> {
   const now = Date.now();
   const seriesCut = now - days * DAY_MS;
-  // I delta "oggi"/"7 giorni" servono anche con finestre corte: leggi >= 8gg.
-  const readCut = now - Math.max(days, 8) * DAY_MS;
 
-  const all = hasDb()
-    ? await readSnapshotsDb(openId, readCut)
-    : (await readSnapshots(openId)).filter((s) => s.t >= readCut);
+  // Serie sulla finestra richiesta. Con granularità giornaliera si downsampla
+  // già in SQL (un punto per giorno): un anno legge poche centinaia di righe
+  // invece dell'intero storico al minuto. Con granularità oraria (finestra
+  // corta, tipicamente 7 giorni) si leggono le righe grezze — sono comunque
+  // poche — e toSeries le riduce a un punto per ora.
+  let series: HistorySnapshot[];
+  if (!hasDb()) {
+    series = (await readSnapshots(openId)).filter((s) => s.t >= seriesCut);
+  } else if (granularity === "hour") {
+    series = await readSnapshotsDb(openId, seriesCut);
+  } else {
+    series = await readDailyDb(openId, seriesCut);
+  }
 
-  const windowed = all.filter((s) => s.t >= seriesCut);
-
+  // I delta "oggi"/"settimana" si ricavano dalla stessa serie: alla granularità
+  // giornaliera "oggi" è l'ultimo valore meno quello di ieri — abbastanza per le
+  // card (il client li ricalcola comunque dalla serie `daily`).
   return {
-    daily: toSeries(windowed, granularity),
+    daily: toSeries(series, granularity),
     deltas: {
-      followers: computeDelta(all, (s) => s.followers, now),
-      views: computeDelta(all, (s) => s.views, now),
-      likes: computeDelta(all, (s) => s.likes, now),
-      comments: computeDelta(all, (s) => s.comments, now),
-      shares: computeDelta(all, (s) => s.shares, now),
-      saved: computeDelta(all, (s) => s.saved, now),
+      followers: computeDelta(series, (s) => s.followers, now),
+      views: computeDelta(series, (s) => s.views, now),
+      likes: computeDelta(series, (s) => s.likes, now),
+      comments: computeDelta(series, (s) => s.comments, now),
+      shares: computeDelta(series, (s) => s.shares, now),
+      saved: computeDelta(series, (s) => s.saved, now),
     },
-    firstAt: all[0]?.t ?? null,
-    count: all.length,
+    firstAt: series[0]?.t ?? null,
+    count: series.length,
     dbEnabled: hasDb(),
   };
 }

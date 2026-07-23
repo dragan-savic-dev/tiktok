@@ -8,7 +8,7 @@ import { getVideoHistory } from "@/lib/video-snapshots";
 // la curva dello share rate, le views nel tempo e la velocità nella pagina del
 // video. Vuota senza DB o finché non si è accumulato abbastanza storico.
 const DEFAULT_DAYS = 7;
-const MAX_DAYS = 120;
+const MAX_DAYS = 365;
 
 export async function GET(
   request: NextRequest,
@@ -29,6 +29,14 @@ export async function GET(
     ? Math.min(MAX_DAYS, Math.max(1, Math.trunc(raw)))
     : DEFAULT_DAYS;
 
-  const series = await getVideoHistory(openId, id, Date.now() - days * DAY_MS);
+  // Finestra corta (≤7gg) → un punto per ora; finestre più lunghe → un punto al
+  // giorno, così anche "12 mesi" resta leggero e leggibile.
+  const granularity = days <= 7 ? "hour" : "day";
+  const series = await getVideoHistory(
+    openId,
+    id,
+    Date.now() - days * DAY_MS,
+    granularity,
+  );
   return NextResponse.json({ series, dbEnabled: hasDb() });
 }

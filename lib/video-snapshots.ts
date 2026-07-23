@@ -113,22 +113,46 @@ export async function recordVideoSnapshots(
   }
 }
 
-/** Serie temporale di un singolo video (dal più vecchio), da `sinceMs` in poi. */
+export type VideoGranularity = "raw" | "hour" | "day";
+
+/**
+ * Serie temporale di un singolo video (dal più vecchio), da `sinceMs` in poi.
+ * `granularity` downsampla per tenere il payload piccolo sulle finestre lunghe:
+ *   - "raw": tutte le rilevazioni (una ogni ~5 min);
+ *   - "hour"/"day": l'ultima rilevazione di ogni ora/giorno (bucket UTC, via
+ *     DISTINCT ON) — così 7 giorni ≈ 168 punti e un anno ≈ 365 invece di decine
+ *     di migliaia.
+ */
 export async function getVideoHistory(
   openId: string,
   videoId: string,
   sinceMs: number,
+  granularity: VideoGranularity = "raw",
 ): Promise<VideoPoint[]> {
   if (!hasDb()) return [];
   try {
     await ensureSchema();
-    const rows = (await sql!`
-      SELECT t, views, likes, comments, shares, saved
-      FROM video_snapshots
-      WHERE open_id = ${openId} AND video_id = ${videoId} AND t >= ${sinceMs}
-      ORDER BY t ASC
-    `) as Record<string, unknown>[];
-    return rows.map((r) => ({
+    const rows = (await (granularity === "day"
+      ? sql!`
+          SELECT DISTINCT ON (t / 86400000) t, views, likes, comments, shares, saved
+          FROM video_snapshots
+          WHERE open_id = ${openId} AND video_id = ${videoId} AND t >= ${sinceMs}
+          ORDER BY (t / 86400000), t DESC
+        `
+      : granularity === "hour"
+        ? sql!`
+            SELECT DISTINCT ON (t / 3600000) t, views, likes, comments, shares, saved
+            FROM video_snapshots
+            WHERE open_id = ${openId} AND video_id = ${videoId} AND t >= ${sinceMs}
+            ORDER BY (t / 3600000), t DESC
+          `
+        : sql!`
+            SELECT t, views, likes, comments, shares, saved
+            FROM video_snapshots
+            WHERE open_id = ${openId} AND video_id = ${videoId} AND t >= ${sinceMs}
+            ORDER BY t ASC
+          `)) as Record<string, unknown>[];
+    const points = rows.map((r) => ({
       t: Number(r.t),
       views: Number(r.views ?? 0),
       likes: Number(r.likes ?? 0),
@@ -136,6 +160,8 @@ export async function getVideoHistory(
       shares: Number(r.shares ?? 0),
       saved: r.saved == null ? null : Number(r.saved),
     }));
+    // DISTINCT ON ordina per bucket: riordina cronologicamente per sicurezza.
+    return granularity === "raw" ? points : points.sort((a, b) => a.t - b.t);
   } catch {
     return [];
   }

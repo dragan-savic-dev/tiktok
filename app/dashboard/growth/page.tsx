@@ -22,15 +22,15 @@ import {
   toSeries,
 } from "@/lib/snapshots";
 import { useStats } from "../stats-context";
-import { CHART_COLORS, Loading } from "../shared";
+import {
+  HOURLY_MAX_DAYS,
+  Loading,
+  METRIC_COLORS,
+  ModePicker,
+  RangePicker,
+  TREND_RANGES,
+} from "../shared";
 import { useT } from "@/app/components/locale-provider";
-
-const RANGES = [
-  { days: 7, label: "7 days" },
-  { days: 30, label: "30 days" },
-  { days: 90, label: "90 days" },
-  { days: 120, label: "120 days" },
-];
 
 /** "2026-07-13" -> "13/07"; "2026-07-13 14" (bucket orario) -> "13/07 14:00" */
 function bucketLabel(day: string): string {
@@ -193,24 +193,24 @@ function exportCsv(daily: DailyPoint[]): void {
 
 export default function GrowthPage() {
   const t = useT();
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(7);
   // Range a cui corrispondono i dati attualmente mostrati. Cambia SOLO quando il
   // fetch del nuovo range è pronto: così cambiando filtro la vista non passa da
   // uno stato intermedio (dati vecchi filtrati sulla finestra nuova) → niente
   // doppio scatto. `days` guida solo il pulsante attivo e la richiesta.
-  const [viewDays, setViewDays] = useState(30);
+  const [viewDays, setViewDays] = useState(7);
   const [mode, setMode] = useState<"total" | "delta">("total");
   const [history, setHistory] = useState<HistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { stats } = useStats();
 
-  // Su 7 giorni gli snapshot al minuto permettono la granularità oraria.
-  const hourly = viewDays === 7;
+  // Sulle finestre corte (≤7gg) gli snapshot fitti permettono la granularità oraria.
+  const hourly = viewDays <= HOURLY_MAX_DAYS;
 
   useEffect(() => {
     let cancelled = false;
-    const granularity = days === 7 ? "hour" : "day";
+    const granularity = days <= HOURLY_MAX_DAYS ? "hour" : "day";
     const load = async () => {
       try {
         const res = await fetch(`/api/history?days=${days}&granularity=${granularity}`, {
@@ -258,7 +258,7 @@ export default function GrowthPage() {
   const daily = toSeries(windowed, hourly ? "hour" : "day");
   const count = merged.length;
   const windowMs = viewDays * DAY_MS;
-  const rangeLabel = t(RANGES.find((r) => r.days === viewDays)?.label ?? "");
+  const rangeLabel = t(TREND_RANGES.find((r) => r.days === viewDays)?.label ?? "");
 
   // Card metriche: conteggio attuale (dai dati live, fallback all'ultimo
   // snapshot) + variazione sul periodo selezionato + variazione di oggi. Il
@@ -330,41 +330,8 @@ export default function GrowthPage() {
           )}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
-            {RANGES.map((r) => (
-              <button
-                key={r.days}
-                onClick={() => setDays(r.days)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  days === r.days
-                    ? "bg-tt-pink/20 text-white"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {t(r.label)}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
-            {(
-              [
-                { key: "total", label: t("Total") },
-                { key: "delta", label: hourly ? t("Change/hour") : t("Change/day") },
-              ] as const
-            ).map((m) => (
-              <button
-                key={m.key}
-                onClick={() => setMode(m.key)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  mode === m.key
-                    ? "bg-tt-cyan/15 text-white"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <RangePicker days={days} onChange={setDays} />
+          <ModePicker mode={mode} onChange={setMode} hourly={hourly} />
           <button
             onClick={() => exportCsv(daily)}
             disabled={daily.length === 0}
@@ -424,7 +391,7 @@ export default function GrowthPage() {
       {enoughData ? (
         <>
           <Card title={deltaMode ? t("Followers gained") : t("Follower growth")}>
-            {chart((p) => p.followers, CHART_COLORS.pink)}
+            {chart((p) => p.followers, METRIC_COLORS.followers)}
           </Card>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card
@@ -437,20 +404,26 @@ export default function GrowthPage() {
                 ) : undefined
               }
             >
-              {chart((p) => p.views, CHART_COLORS.cyan, true)}
+              {chart((p) => p.views, METRIC_COLORS.views, true)}
             </Card>
-            <Card title={t("Likes over time")}>{chart((p) => p.likes, CHART_COLORS.violet)}</Card>
+            <Card title={t("Likes over time")}>{chart((p) => p.likes, METRIC_COLORS.likes)}</Card>
+            <Card title={t("Comments over time")}>
+              {chart((p) => p.comments, METRIC_COLORS.comments)}
+            </Card>
+            <Card title={t("Shares over time")}>
+              {chart((p) => p.shares, METRIC_COLORS.shares)}
+            </Card>
           </div>
           {savedSeries.length >= 2 && (
             <Card title={t("Saves over time")}>
               {deltaMode ? (
                 <BarChart
                   bars={pointsDelta(savedSeries)}
-                  color={CHART_COLORS.amber}
+                  color={METRIC_COLORS.saved}
                   formatValue={formatSigned}
                 />
               ) : (
-                <LineChart data={savedSeries} color={CHART_COLORS.amber} />
+                <LineChart data={savedSeries} color={METRIC_COLORS.saved} />
               )}
             </Card>
           )}
