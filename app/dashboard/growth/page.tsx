@@ -37,10 +37,10 @@ function bucketLabel(day: string): string {
   return hour ? `${d}/${m} ${hour}:00` : `${d}/${m}`;
 }
 
+/** Variazione compatta col segno ("+20K", "+1,2 Mln"): etichette asse Y corte. */
 function formatSigned(n: number): string {
   if (n === 0) return "0";
-  const sign = n > 0 ? "+" : "−";
-  return `${sign}${Math.abs(n).toLocaleString("it-IT")}`;
+  return `${n > 0 ? "+" : "−"}${formatCompact(Math.abs(n))}`;
 }
 
 function toneClass(n: number | null): string {

@@ -63,7 +63,7 @@ export default function LineChart({
           tick={{ fill: "#71717a", fontSize: 11 }}
           axisLine={false}
           tickLine={false}
-          width={48}
+          width={56}
           tickFormatter={formatValue}
           // Non parte da zero: sui totali cumulativi la variazione resterebbe
           // schiacciata su una linea piatta.

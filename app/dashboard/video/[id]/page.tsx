@@ -19,6 +19,7 @@ import {
   ShareIcon,
 } from "@/app/components/icons";
 import {
+  formatCompact,
   formatDuration,
   formatPercent,
   shareRateTier,
@@ -50,11 +51,13 @@ const TIER_DOT = {
   low: "bg-tt-pink",
 } as const;
 
-/** "+1.234" / "−1.234" (nessun segno per lo zero) per la modalità Variazione. */
+/**
+ * Variazione compatta col segno: "+240", "+20K", "+1,2 Mln" (0 per lo zero).
+ * Compatta come formatCompact così le etichette dell'asse Y non si tagliano.
+ */
 function formatSigned(n: number): string {
   if (n === 0) return "0";
-  const sign = n > 0 ? "+" : "−";
-  return `${sign}${Math.abs(n).toLocaleString("it-IT")}`;
+  return `${n > 0 ? "+" : "−"}${formatCompact(Math.abs(n))}`;
 }
 
 /**
