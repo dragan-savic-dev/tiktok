@@ -8,7 +8,6 @@ import type {
   VideoStats,
 } from "@/lib/types";
 import { Card } from "@/app/components/card";
-import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import FlashNumber from "@/app/components/flash-number";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
 import { DownloadIcon, TrendUpIcon } from "@/app/components/icons";
@@ -105,11 +104,11 @@ function seriesTotal(
   });
 }
 
-/** Serie della variazione: differenza tra bucket consecutivi. */
+/** Serie della variazione giornaliera: differenza tra un giorno e il precedente. */
 function seriesDelta(
   daily: DailyPoint[],
   pick: (p: DailyPoint) => number | null,
-): BarDatum[] {
+): LinePoint[] {
   const points = seriesTotal(daily, pick);
   return points.slice(1).map((p, i) => ({ label: p.label, value: p.value - points[i].value }));
 }
@@ -128,7 +127,7 @@ function monotonic(points: LinePoint[]): LinePoint[] {
 }
 
 /** Variazione tra punti consecutivi di una serie già pronta. */
-function pointsDelta(points: LinePoint[]): BarDatum[] {
+function pointsDelta(points: LinePoint[]): LinePoint[] {
   return points
     .slice(1)
     .map((p, i) => ({ label: p.label, value: p.value - points[i].value }));
@@ -302,14 +301,20 @@ export default function GrowthPage() {
         }
       : null;
 
-  /** Un grafico che segue il toggle Totale/Variazione. */
+  // Un grafico che segue il toggle Totale/Variazione. SEMPRE lo stesso grafico
+  // (curva ad area): in "Variazione" cambia solo il dato (guadagno giornaliero,
+  // 0 nei giorni fermi), NON il tipo di grafico — niente barre.
   const chart = (
     pick: (p: DailyPoint) => number | null,
     color: string,
     withMarkers = false,
   ) =>
     deltaMode ? (
-      <BarChart bars={seriesDelta(daily, pick)} color={color} formatValue={formatSigned} />
+      <LineChart
+        data={seriesDelta(daily, pick)}
+        color={color}
+        formatValue={formatSigned}
+      />
     ) : (
       <LineChart
         data={seriesTotal(daily, pick)}
@@ -415,8 +420,8 @@ export default function GrowthPage() {
           {savedSeries.length >= 2 && (
             <Card title={t("Saves over time")}>
               {deltaMode ? (
-                <BarChart
-                  bars={pointsDelta(savedSeries)}
+                <LineChart
+                  data={pointsDelta(savedSeries)}
                   color={METRIC_COLORS.saved}
                   formatValue={formatSigned}
                 />

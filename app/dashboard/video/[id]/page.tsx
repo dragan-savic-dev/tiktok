@@ -6,7 +6,6 @@ import { useParams } from "next/navigation";
 import type { VideoStats } from "@/lib/types";
 import { Card } from "@/app/components/card";
 import { useT } from "@/app/components/locale-provider";
-import BarChart, { type BarDatum } from "@/app/components/bar-chart";
 import DonutChart from "@/app/components/donut-chart";
 import FlashNumber from "@/app/components/flash-number";
 import LineChart, { type LinePoint } from "@/app/components/line-chart";
@@ -595,17 +594,18 @@ function VideoTrend({ id }: { id: string }) {
       return v === null ? [] : [{ label: fmtLabel(p.t), value: v }];
     });
   // Variazione giornaliera = differenza tra un giorno e il precedente.
-  const deltaBars = (points: LinePoint[]): BarDatum[] =>
+  const dailyDelta = (points: LinePoint[]): LinePoint[] =>
     points
       .slice(1)
       .map((p, i) => ({ label: p.label, value: p.value - points[i].value }));
 
-  /** Un grafico metrica che segue il toggle Totale / Variazione. */
+  // SEMPRE la stessa curva ad area: in "Variazione" cambia solo il dato
+  // (guadagno giornaliero, 0 nei giorni fermi), non il tipo di grafico — niente barre.
   const metricChart = (pick: (p: TrendPoint) => number | null, color: string) => {
     const points = line(pick);
     return deltaMode ? (
-      <BarChart
-        bars={deltaBars(points)}
+      <LineChart
+        data={dailyDelta(points)}
         color={color}
         formatValue={formatSigned}
         height={180}
@@ -645,8 +645,8 @@ function VideoTrend({ id }: { id: string }) {
       {savedLine.length >= 2 && (
         <Card title={t("Saves over time")}>
           {deltaMode ? (
-            <BarChart
-              bars={deltaBars(savedLine)}
+            <LineChart
+              data={dailyDelta(savedLine)}
               color={METRIC_COLORS.saved}
               formatValue={formatSigned}
               height={180}
