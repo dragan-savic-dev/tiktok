@@ -31,7 +31,6 @@ import { useStats } from "../../stats-context";
 import {
   CHART_COLORS,
   ErrorBanner,
-  HOURLY_MAX_DAYS,
   Loading,
   METRIC_COLORS,
   ModePicker,
@@ -474,10 +473,7 @@ export default function VideoDetailPage() {
           </Card>
       </div>
 
-      <VideoTrend
-        id={id}
-        live={{ views, likes, comments, shares, saved }}
-      />
+      <VideoTrend id={id} />
 
       <p className="text-xs text-zinc-600">
         {t(
@@ -501,13 +497,10 @@ interface TrendPoint {
 function useVideoHistory(
   id: string,
   days: number,
-): { series: TrendPoint[]; dbEnabled: boolean; days: number } | null {
+): { series: TrendPoint[]; dbEnabled: boolean } | null {
   const [state, setState] = useState<{
     series: TrendPoint[];
     dbEnabled: boolean;
-    /** Range che ha prodotto questi dati: la vista si formatta su questo, non sul
-     * pulsante appena premuto (evita etichette incoerenti durante il refetch). */
-    days: number;
   } | null>(null);
 
   useEffect(() => {
@@ -523,7 +516,6 @@ function useVideoHistory(
           setState({
             series: Array.isArray(body?.series) ? (body.series as TrendPoint[]) : [],
             dbEnabled: !!body?.dbEnabled,
-            days,
           });
         }
       } catch {
@@ -545,63 +537,28 @@ function useVideoHistory(
   return state;
 }
 
-function TrendStat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: ReactNode;
-  hint?: string;
-}) {
-  const t = useT();
-  return (
-    <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400">
-        {t(label)}
-      </span>
-      <span className="text-2xl font-bold text-white">{value}</span>
-      {hint && <span className="text-xs text-zinc-600">{t(hint)}</span>}
-    </div>
-  );
-}
-
-interface LiveCounters {
-  views: number;
-  likes: number;
-  comments: number;
-  shares: number;
-  /** null = "salvati" non disponibili (scraping bloccato o non ancora letto). */
-  saved: number | null;
-}
-
 /**
- * Curve ricostruite dagli snapshot per singolo video: andamento di tutte le
- * metriche (views, like, commenti, condivisioni, salvati) + share rate, con
- * filtro periodo (7g → 12 mesi) e toggle Totale / Variazione.
+ * Curve GIORNALIERE ricostruite dagli snapshot del singolo video: andamento di
+ * tutte le metriche (views, like, commenti, condivisioni, salvati) + share rate,
+ * con filtro periodo (7g → 12 mesi) e toggle Totale / Variazione.
+ *
+ * Default = Variazione: mostra quanto ha fatto il video OGNI GIORNO (un giorno
+ * senza nuove interazioni → 0), non il totale cumulativo che sale e si appiattisce.
  */
-function VideoTrend({ id, live }: { id: string; live: LiveCounters }) {
+function VideoTrend({ id }: { id: string }) {
   const t = useT();
   const [days, setDays] = useState(7);
-  const [mode, setMode] = useState<"total" | "delta">("total");
+  const [mode, setMode] = useState<"total" | "delta">("delta");
   const data = useVideoHistory(id, days);
-
-  // La formattazione segue il range dei dati EFFETTIVAMENTE mostrati (data.days),
-  // che durante un cambio filtro resta quello vecchio finché il fetch non è pronto.
-  const shownDays = data?.days ?? days;
-  const hourly = shownDays <= HOURLY_MAX_DAYS;
   const deltaMode = mode === "delta";
 
-  const controls = (
-    <div className="flex flex-wrap items-center gap-2">
-      <RangePicker days={days} onChange={setDays} />
-      <ModePicker mode={mode} onChange={setMode} hourly={hourly} />
-    </div>
-  );
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <h3 className="text-sm font-semibold text-white">{t("Trend over time")}</h3>
-      {controls}
+      <div className="flex flex-wrap items-center gap-2">
+        <RangePicker days={days} onChange={setDays} />
+        <ModePicker mode={mode} onChange={setMode} />
+      </div>
     </div>
   );
 
@@ -623,14 +580,12 @@ function VideoTrend({ id, live }: { id: string; live: LiveCounters }) {
       "Collecting data: the curve appears after a few readings (one snapshot every ~5 minutes while the video is active).",
     );
 
-  // "13/07" (giornaliero) oppure "13/07 14:00" (orario, finestre corte).
+  // Bucket giornalieri: etichetta "13/07".
   const fmtLabel = (ts: number) => {
     const dte = new Date(ts);
-    const dd = String(dte.getDate()).padStart(2, "0");
-    const mm = String(dte.getMonth() + 1).padStart(2, "0");
-    return hourly
-      ? `${dd}/${mm} ${String(dte.getHours()).padStart(2, "0")}:00`
-      : `${dd}/${mm}`;
+    return `${String(dte.getDate()).padStart(2, "0")}/${String(
+      dte.getMonth() + 1,
+    ).padStart(2, "0")}`;
   };
 
   // Serie di una metrica (salta i punti null, es. salvati N/D).
@@ -639,7 +594,7 @@ function VideoTrend({ id, live }: { id: string; live: LiveCounters }) {
       const v = pick(p);
       return v === null ? [] : [{ label: fmtLabel(p.t), value: v }];
     });
-  // Variazione tra bucket consecutivi (per la modalità Variazione).
+  // Variazione giornaliera = differenza tra un giorno e il precedente.
   const deltaBars = (points: LinePoint[]): BarDatum[] =>
     points
       .slice(1)
@@ -661,49 +616,16 @@ function VideoTrend({ id, live }: { id: string; live: LiveCounters }) {
   };
 
   const savedLine = line((p) => p.saved);
+  // Lo share rate è un rapporto: sempre a linea (la "variazione" di un rapporto
+  // non è informativa).
   const shareRateData: LinePoint[] = series.map((p) => ({
     label: fmtLabel(p.t),
     value: p.views ? p.shares / p.views : 0,
   }));
 
-  // "Attuale" usa i contatori LIVE del video (come il resto della pagina), non
-  // l'ultimo snapshot (che può avere qualche minuto di ritardo): così lo share
-  // rate qui coincide con quello del confronto.
-  const currentShare = live.views ? live.shares / live.views : 0;
-
-  // Velocità (solo con granularità oraria): views nell'ultima ora = views live
-  // meno quelle di ~1h fa. Sui range lunghi (bucket giornalieri) non ha senso.
-  const last = series[series.length - 1];
-  const hourAgo = last.t - 3_600_000;
-  let base = series[0];
-  for (const p of series) {
-    if (p.t <= hourAgo) base = p;
-    else break;
-  }
-  const velocity = Math.max(0, live.views - base.views);
-
   return (
     <div className="flex flex-col gap-5">
       {header}
-
-      <div className={`grid gap-3 sm:gap-4 ${hourly ? "grid-cols-2" : "grid-cols-1"}`}>
-        {hourly && (
-          <TrendStat
-            label="Speed · last hour"
-            value={<FlashNumber value={velocity} />}
-            hint="views in the last hour"
-          />
-        )}
-        <TrendStat
-          label="Current share rate"
-          value={
-            <span className={TIER_TEXT[shareRateTier(currentShare)]}>
-              <FlashNumber value={currentShare} format={(f) => formatPercent(f, 2)} />
-            </span>
-          }
-          hint="shares / views"
-        />
-      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title={t("Views over time")}>

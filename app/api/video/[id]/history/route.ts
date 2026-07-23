@@ -29,14 +29,13 @@ export async function GET(
     ? Math.min(MAX_DAYS, Math.max(1, Math.trunc(raw)))
     : DEFAULT_DAYS;
 
-  // Finestra corta (≤7gg) → un punto per ora; finestre più lunghe → un punto al
-  // giorno, così anche "12 mesi" resta leggero e leggibile.
-  const granularity = days <= 7 ? "hour" : "day";
+  // Serie sempre giornaliera: un punto per giorno (andamento giornaliero, non
+  // cumulativo intraday), leggera anche su "12 mesi".
   const series = await getVideoHistory(
     openId,
     id,
     Date.now() - days * DAY_MS,
-    granularity,
+    "day",
   );
   return NextResponse.json({ series, dbEnabled: hasDb() });
 }

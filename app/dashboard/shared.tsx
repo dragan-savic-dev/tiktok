@@ -37,9 +37,6 @@ export const TREND_RANGES = [
   { days: 365, label: "12 months" },
 ] as const;
 
-/** Sotto questa soglia (giorni) la serie è a granularità oraria, sopra giornaliera. */
-export const HOURLY_MAX_DAYS = 7;
-
 /** Pillole di selezione dell'intervallo (7g / 1M / 3M / 6M / 12M). */
 export function RangePicker({
   days,
@@ -68,21 +65,18 @@ export function RangePicker({
   );
 }
 
-/** Pillole Totale / Variazione (l'etichetta variazione dipende dalla granularità). */
+/** Pillole Totale / Variazione (la serie è sempre giornaliera). */
 export function ModePicker({
   mode,
   onChange,
-  hourly,
 }: {
   mode: "total" | "delta";
   onChange: (mode: "total" | "delta") => void;
-  /** true = bucket orari: la variazione è per ora, altrimenti per giorno. */
-  hourly: boolean;
 }) {
   const t = useT();
   const options = [
     { key: "total", label: t("Total") },
-    { key: "delta", label: hourly ? t("Change/hour") : t("Change/day") },
+    { key: "delta", label: t("Change/day") },
   ] as const;
   return (
     <div className="flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">

@@ -23,7 +23,6 @@ import {
 } from "@/lib/snapshots";
 import { useStats } from "../stats-context";
 import {
-  HOURLY_MAX_DAYS,
   Loading,
   METRIC_COLORS,
   ModePicker,
@@ -199,21 +198,20 @@ export default function GrowthPage() {
   // uno stato intermedio (dati vecchi filtrati sulla finestra nuova) → niente
   // doppio scatto. `days` guida solo il pulsante attivo e la richiesta.
   const [viewDays, setViewDays] = useState(7);
-  const [mode, setMode] = useState<"total" | "delta">("total");
+  // Default: Variazione (andamento giornaliero) — un giorno senza crescita mostra
+  // 0, invece del totale cumulativo. "Totale" resta come alternativa nel toggle.
+  const [mode, setMode] = useState<"total" | "delta">("delta");
   const [history, setHistory] = useState<HistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { stats } = useStats();
 
-  // Sulle finestre corte (≤7gg) gli snapshot fitti permettono la granularità oraria.
-  const hourly = viewDays <= HOURLY_MAX_DAYS;
-
   useEffect(() => {
     let cancelled = false;
-    const granularity = days <= HOURLY_MAX_DAYS ? "hour" : "day";
     const load = async () => {
       try {
-        const res = await fetch(`/api/history?days=${days}&granularity=${granularity}`, {
+        // Serie sempre giornaliera: un punto per giorno (niente curva oraria).
+        const res = await fetch(`/api/history?days=${days}&granularity=day`, {
           cache: "no-store",
         });
         if (res.status === 401) {
@@ -255,14 +253,14 @@ export default function GrowthPage() {
   );
   const merged = mergeSnapshots(history?.daily ?? [], [], now);
   const windowed = merged.filter((s) => s.t >= now - viewDays * DAY_MS);
-  const daily = toSeries(windowed, hourly ? "hour" : "day");
+  const daily = toSeries(windowed, "day");
   const count = merged.length;
   const windowMs = viewDays * DAY_MS;
   const rangeLabel = t(TREND_RANGES.find((r) => r.days === viewDays)?.label ?? "");
 
   // Card metriche: conteggio attuale (dai dati live, fallback all'ultimo
   // snapshot) + variazione sul periodo selezionato + variazione di oggi. Il
-  // selettore 7/30/90/120 filtra quindi anche queste, non solo i grafici.
+  // selettore 7g/1/3/6/12 mesi filtra quindi anche queste, non solo i grafici.
   const metricDefs: {
     label: string;
     pick: (s: HistorySnapshot) => number | null;
@@ -287,7 +285,7 @@ export default function GrowthPage() {
 
   const savedSeries = monotonic(seriesTotal(daily, (p) => p.saved));
   const availableLabels = new Set(daily.map((p) => bucketLabel(p.day)));
-  const markers = publicationMarkers(stats?.videos ?? [], hourly, availableLabels);
+  const markers = publicationMarkers(stats?.videos ?? [], false, availableLabels);
 
   // Proiezione del prossimo traguardo follower al ritmo degli ultimi 7 giorni.
   const followers = stats?.user.follower_count ?? null;
@@ -331,7 +329,7 @@ export default function GrowthPage() {
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <RangePicker days={days} onChange={setDays} />
-          <ModePicker mode={mode} onChange={setMode} hourly={hourly} />
+          <ModePicker mode={mode} onChange={setMode} />
           <button
             onClick={() => exportCsv(daily)}
             disabled={daily.length === 0}
