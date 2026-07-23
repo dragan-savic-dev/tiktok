@@ -394,31 +394,29 @@ export default function GrowthPage() {
       )}
 
       {enoughData ? (
-        <>
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card title={deltaMode ? t("Followers gained") : t("Follower growth")}>
             {chart((p) => p.followers, METRIC_COLORS.followers)}
           </Card>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card
-              title={t("Views over time")}
-              action={
-                !deltaMode && markers.length > 0 ? (
-                  <span className="text-[10px] uppercase tracking-wider text-zinc-500">
-                    <span className="text-tt-pink">┆</span> {t("publications")}
-                  </span>
-                ) : undefined
-              }
-            >
-              {chart((p) => p.views, METRIC_COLORS.views, true)}
-            </Card>
-            <Card title={t("Likes over time")}>{chart((p) => p.likes, METRIC_COLORS.likes)}</Card>
-            <Card title={t("Comments over time")}>
-              {chart((p) => p.comments, METRIC_COLORS.comments)}
-            </Card>
-            <Card title={t("Shares over time")}>
-              {chart((p) => p.shares, METRIC_COLORS.shares)}
-            </Card>
-          </div>
+          <Card
+            title={t("Views over time")}
+            action={
+              !deltaMode && markers.length > 0 ? (
+                <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+                  <span className="text-tt-pink">┆</span> {t("publications")}
+                </span>
+              ) : undefined
+            }
+          >
+            {chart((p) => p.views, METRIC_COLORS.views, true)}
+          </Card>
+          <Card title={t("Likes over time")}>{chart((p) => p.likes, METRIC_COLORS.likes)}</Card>
+          <Card title={t("Comments over time")}>
+            {chart((p) => p.comments, METRIC_COLORS.comments)}
+          </Card>
+          <Card title={t("Shares over time")}>
+            {chart((p) => p.shares, METRIC_COLORS.shares)}
+          </Card>
           {savedSeries.length >= 2 && (
             <Card title={t("Saves over time")}>
               {deltaMode ? (
@@ -433,7 +431,7 @@ export default function GrowthPage() {
               )}
             </Card>
           )}
-        </>
+        </div>
       ) : (
         <Card>
           <div className="flex flex-col items-center gap-3 py-10 text-center">
