@@ -70,6 +70,13 @@ function monotonic(points: LinePoint[]): LinePoint[] {
   });
 }
 
+/** Variazione percentuale col segno, es. "+0,24%" (per lo share rate giornaliero). */
+function formatSignedPercent(f: number): string {
+  if (f === 0) return "0%";
+  const sign = f > 0 ? "+" : "−";
+  return `${sign}${formatPercent(Math.abs(f), 2)}`;
+}
+
 /**
  * Contatori freschi del singolo video via /api/video/[id] (video/query, TTL
  * più corto della lista completa). Best-effort: se fallisce si resta sui dati
@@ -653,14 +660,26 @@ function VideoTrend({ id }: { id: string }) {
         )}
       </Card>
     ) : null;
+  // Come gli altri grafici, lo share rate segue il toggle: in "Variazione" mostra
+  // la variazione giornaliera del rate (picco→0, stesso stile), in "Totale" la
+  // curva del rate cumulativo.
   const shareRateCard = (
     <Card title={t("Share rate over time")}>
-      <LineChart
-        data={shareRateData}
-        color={CHART_COLORS.pink}
-        height={180}
-        formatValue={(f) => formatPercent(f, 1)}
-      />
+      {deltaMode ? (
+        <LineChart
+          data={dailyDelta(shareRateData)}
+          color={CHART_COLORS.pink}
+          height={180}
+          formatValue={formatSignedPercent}
+        />
+      ) : (
+        <LineChart
+          data={shareRateData}
+          color={CHART_COLORS.pink}
+          height={180}
+          formatValue={(f) => formatPercent(f, 1)}
+        />
+      )}
     </Card>
   );
 

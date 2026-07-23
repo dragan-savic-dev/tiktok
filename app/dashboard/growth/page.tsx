@@ -314,12 +314,14 @@ export default function GrowthPage() {
         data={seriesDelta(daily, pick)}
         color={color}
         formatValue={formatSigned}
+        height={180}
       />
     ) : (
       <LineChart
         data={seriesTotal(daily, pick)}
         color={color}
         markers={withMarkers ? markers : []}
+        height={180}
       />
     );
 
@@ -424,9 +426,10 @@ export default function GrowthPage() {
                   data={pointsDelta(savedSeries)}
                   color={METRIC_COLORS.saved}
                   formatValue={formatSigned}
+                  height={180}
                 />
               ) : (
-                <LineChart data={savedSeries} color={METRIC_COLORS.saved} />
+                <LineChart data={savedSeries} color={METRIC_COLORS.saved} height={180} />
               )}
             </Card>
           )}
