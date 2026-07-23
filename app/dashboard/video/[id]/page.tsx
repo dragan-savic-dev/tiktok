@@ -58,6 +58,19 @@ function formatSigned(n: number): string {
 }
 
 /**
+ * Rende una serie non-decrescente (running max). I "salvati" da scraping non
+ * calano davvero nel tempo: un tuffo è quasi sempre uno scrape sporco, così lo
+ * appiattiamo (come nella pagina Crescita) prima di derivarne la variazione.
+ */
+function monotonic(points: LinePoint[]): LinePoint[] {
+  let max = -Infinity;
+  return points.map((p) => {
+    max = Math.max(max, p.value);
+    return { ...p, value: max };
+  });
+}
+
+/**
  * Contatori freschi del singolo video via /api/video/[id] (video/query, TTL
  * più corto della lista completa). Best-effort: se fallisce si resta sui dati
  * del contesto condiviso.
@@ -615,13 +628,41 @@ function VideoTrend({ id }: { id: string }) {
     );
   };
 
-  const savedLine = line((p) => p.saved);
+  // Salvati: serie resa non-decrescente (vedi monotonic) per togliere i tuffi da
+  // scrape sporco prima di calcolarne la variazione giornaliera.
+  const savedLine = monotonic(line((p) => p.saved));
   // Lo share rate è un rapporto: sempre a linea (la "variazione" di un rapporto
   // non è informativa).
   const shareRateData: LinePoint[] = series.map((p) => ({
     label: fmtLabel(p.t),
     value: p.views ? p.shares / p.views : 0,
   }));
+
+  const savedCard =
+    savedLine.length >= 2 ? (
+      <Card title={t("Saves over time")}>
+        {deltaMode ? (
+          <LineChart
+            data={dailyDelta(savedLine)}
+            color={METRIC_COLORS.saved}
+            formatValue={formatSigned}
+            height={180}
+          />
+        ) : (
+          <LineChart data={savedLine} color={METRIC_COLORS.saved} height={180} />
+        )}
+      </Card>
+    ) : null;
+  const shareRateCard = (
+    <Card title={t("Share rate over time")}>
+      <LineChart
+        data={shareRateData}
+        color={CHART_COLORS.pink}
+        height={180}
+        formatValue={(f) => formatPercent(f, 1)}
+      />
+    </Card>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -642,29 +683,15 @@ function VideoTrend({ id }: { id: string }) {
         </Card>
       </div>
 
-      {savedLine.length >= 2 && (
-        <Card title={t("Saves over time")}>
-          {deltaMode ? (
-            <LineChart
-              data={dailyDelta(savedLine)}
-              color={METRIC_COLORS.saved}
-              formatValue={formatSigned}
-              height={180}
-            />
-          ) : (
-            <LineChart data={savedLine} color={METRIC_COLORS.saved} height={180} />
-          )}
-        </Card>
+      {/* Salvati e Share rate sulla stessa riga (affiancati). */}
+      {savedCard ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {savedCard}
+          {shareRateCard}
+        </div>
+      ) : (
+        shareRateCard
       )}
-
-      <Card title={t("Share rate over time")}>
-        <LineChart
-          data={shareRateData}
-          color={CHART_COLORS.pink}
-          height={180}
-          formatValue={(f) => formatPercent(f, 1)}
-        />
-      </Card>
     </div>
   );
 }
